@@ -1,3 +1,40 @@
+<script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { supabase } from '@/lib/supabase-client'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+const loading = ref(false)
+const errors = ref<string | null>(null)
+
+const login = async (e: Event) => {
+  const form = e.target as HTMLFormElement
+  const formData = new FormData(form)
+  errors.value = null
+
+  const payload = {
+    email: formData.get('email') as string,
+    password: formData.get('password') as string,
+  }
+
+  loading.value = true
+
+  try {
+    const { error } = await supabase.auth.signInWithPassword(payload)
+    if (error != null) {
+      errors.value = 'The provided credentials do not match our records'
+    }
+    router.push('/welcome')
+  } finally {
+    loading.value = false
+  }
+}
+</script>
+
 <template>
   <div class="flex min-h-screen flex-col items-center bg-blue-800 sm:justify-center">
     <div class="mx-auto mt-6 w-full max-w-lg sm:mt-0">
@@ -7,31 +44,27 @@
 
       <div class="mt-4 px-4 py-6 sm:mt-8 sm:rounded-lg sm:bg-white sm:shadow-lg">
         <form @submit.prevent="login" method="post">
-          <div>
-            <label for="email" class="sr-only">Emaiil address</label>
-            <Input
-              type="email"
-              name="email"
-              id="email"
-              placeholder="Email address"
-              autocomplete="username"
-              required
-            />
+          <div class="grid gap-2">
+            <Label for="email">Email address</Label>
+            <Input type="email" name="email" id="email" autocomplete="username" required />
           </div>
 
-          <div class="mt-4">
-            <label for="password" class="sr-only">Password</label>
+          <div v-if="errors" class="mt-2 text-sm text-red-600">
+            {{ errors }}
+          </div>
+
+          <div class="mt-4 grid gap-2">
+            <Label for="password">Password</Label>
             <Input
               type="password"
               name="password"
               id="password"
-              placeholder="Password"
               autocomplete="current-password"
               required
             />
           </div>
 
-          <Button variant="default" class="mt-4 w-full">Login</Button>
+          <Button variant="default" class="mt-4 w-full" :disabled="loading">Login</Button>
         </form>
       </div>
 
@@ -44,15 +77,3 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
-
-const login = () => {
-  router.push('/welcome')
-}
-</script>
