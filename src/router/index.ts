@@ -5,6 +5,7 @@ import Welcome from '@/views/Welcome.vue'
 import Q1 from '@/views/items/Q1.vue'
 import Q2 from '@/views/items/Q2.vue'
 import Scoresheet from '@/views/Scoresheet.vue'
+import { guest } from '@/router/middleware'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -13,11 +14,13 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: Home,
+      beforeEnter: guest,
     },
     {
       path: '/register',
       name: 'register',
       component: Register,
+      beforeEnter: guest,
     },
     {
       path: '/welcome',
