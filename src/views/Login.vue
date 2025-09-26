@@ -6,7 +6,7 @@
       </div>
 
       <div class="mt-4 px-4 py-6 sm:mt-8 sm:rounded-lg sm:bg-white sm:shadow-lg">
-        <form @submit="onSubmit" method="post">
+        <form @submit.prevent="login" method="post">
           <div>
             <label for="email" class="sr-only">Emaiil address</label>
             <Input
@@ -52,8 +52,7 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-const onSubmit = (event: Event) => {
-  event.preventDefault()
+const login = () => {
   router.push('/welcome')
 }
 </script>
