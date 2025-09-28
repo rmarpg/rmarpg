@@ -17,6 +17,8 @@ const router = useRouter()
 
 const loading = ref(false)
 
+const gender = ref('male')
+
 const register = async (e: Event) => {
   const form = e.target as HTMLFormElement
   const formData = new FormData(form)
@@ -28,7 +30,7 @@ const register = async (e: Event) => {
       data: {
         first_name: formData.get('first_name') as string,
         last_name: formData.get('last_name') as string,
-        gender: formData.get('gender') as string,
+        gender: gender.value,
       },
     },
   }
@@ -68,8 +70,8 @@ const register = async (e: Event) => {
 
           <div class="mt-4 grid gap-2">
             <Label for="gender">Gender</Label>
-            <Select default-value="male">
-              <SelectTrigger name="gender" id="gender" class="w-full">
+            <Select v-model="gender">
+              <SelectTrigger class="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
