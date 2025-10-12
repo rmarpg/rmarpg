@@ -11,7 +11,7 @@ import RMALayout from '@/layouts/RMALayout.vue'
       <p class="mt-4 text-white">Task 0: Tutorial</p>
 
       <Button as-child class="mt-8">
-        <RouterLink to="/q1">Let's do this!</RouterLink>
+        <RouterLink to="/task-a">Let's do this!</RouterLink>
       </Button>
     </section>
   </RMALayout>
