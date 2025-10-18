@@ -2,36 +2,22 @@
   <RMALayout>
     <Task :task="taskData" :featuredNumber="375" @taskComplete="onTaskComplete" @timeUp="onTimeUp">
       <template #default="{ question, onAnswer }">
-        <!-- Answer Input based on question type -->
+        <!-- Multiple Choice Buttons -->
         <div class="space-y-4">
-          <label class="block text-sm font-medium text-gray-700"> Your Answer: </label>
+          <label class="block text-sm font-medium text-gray-700"> Choose your answer: </label>
 
-          <!-- Short Answer Input -->
-          <div v-if="question.type === 'short_answer'" class="space-y-2">
-            <Input
-              v-model="currentAnswer"
-              @input="onAnswer(currentAnswer)"
-              placeholder="Type your answer here..."
-              autocomplete="off"
-            />
-            <p class="text-sm text-gray-500">
-              {{ getAnswerHint(question) }}
-            </p>
-          </div>
-
-          <!-- Numeric Input -->
-          <div v-if="question.type === 'numeric'" class="space-y-2">
-            <Input
-              v-model.number="currentAnswer"
-              @input="onAnswer(currentAnswer.toString())"
-              type="number"
-              placeholder="Enter a number..."
-            />
-          </div>
-
-          <!-- Answer Feedback (if answer provided) -->
-          <div v-if="currentAnswer" class="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
-            <p class="text-blue-800"><strong>Your answer:</strong> {{ currentAnswer }}</p>
+          <!-- Multiple Choice Options -->
+          <div v-if="question.type === 'multiple_choice'" class="grid gap-3">
+            <Button
+              v-for="(option, index) in question.options"
+              :key="index"
+              @click="selectAnswer(option, onAnswer)"
+              :variant="currentAnswer === option ? 'default' : 'outline'"
+              class="h-auto cursor-pointer justify-start p-4 text-left whitespace-normal"
+            >
+              <span class="mr-3 font-medium">{{ String.fromCharCode(65 + index) }}.</span>
+              {{ option }}
+            </Button>
           </div>
         </div>
       </template>
@@ -40,14 +26,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, watch, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import Task from '@/components/Task.vue'
 import RMALayout from '@/layouts/RMALayout.vue'
-import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { useAssessment } from '@/composables/useAssessment'
+import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
 const currentAnswer = ref('')
+const { user, loading: authLoading } = useAuth()
+const { getOrCreateAssessment, updateTaskScore, calculateTaskScore, currentAssessment } =
+  useAssessment()
 
 // Get Task A data from the JSON
 const taskData = computed(() => {
@@ -61,59 +52,128 @@ const taskData = computed(() => {
       {
         id: 'A1',
         prompt: 'How do you read this number? (375)',
-        type: 'short_answer',
+        type: 'multiple_choice',
         answer: 'Three hundred seventy-five',
+        options: [
+          'Three hundred seventy-five',
+          'Three hundred and seventy-five',
+          'Thirty-seven five',
+          'Three seven five',
+        ],
       },
       {
         id: 'A2',
         prompt: 'What is the place value of the digit 7 in this number?',
-        type: 'short_answer',
+        type: 'multiple_choice',
         answer: 'Tens place',
+        options: ['Ones place', 'Tens place', 'Hundreds place', 'Thousands place'],
       },
       {
         id: 'A3',
         prompt: 'What is the value of the digit 7 in this number?',
-        type: 'short_answer',
+        type: 'multiple_choice',
         answer: 'Seventy',
+        options: ['Seven', 'Seventy', 'Seven hundred', 'Three hundred'],
       },
       {
         id: 'A4',
         prompt: 'What is the expanded form of this number?',
-        type: 'short_answer',
+        type: 'multiple_choice',
         answer: '300 + 70 + 5',
+        options: ['3 + 7 + 5', '30 + 70 + 50', '300 + 70 + 5', '375 + 0 + 0'],
       },
     ],
   }
 })
 
 // Methods
-const getAnswerHint = (question: any) => {
-  switch (question.id) {
-    case 'A1':
-      return 'Example: "Three hundred seventy-five"'
-    case 'A2':
-      return 'Example: "Tens place", "Hundreds place", etc.'
-    case 'A3':
-      return 'Example: "Seventy", "Three hundred", etc.'
-    case 'A4':
-      return 'Example: "300 + 70 + 5"'
-    default:
-      return 'Type your answer clearly'
+const selectAnswer = (option: string, onAnswer: (answer: string) => void) => {
+  currentAnswer.value = option
+  onAnswer(option)
+}
+
+const onTaskComplete = async (answers: Record<string, string>) => {
+  console.log('Task A completed with answers:', answers)
+  console.log('currentAssessment.value at completion:', currentAssessment.value)
+
+  // Calculate score for Task A
+  const score = calculateTaskScore(answers, taskData.value.questions, taskData.value.points)
+  console.log(`Task A score: ${score}/${taskData.value.points}`)
+
+  // Update assessment with Task A score
+  if (currentAssessment.value) {
+    console.log('Updating score for assessment:', currentAssessment.value.id)
+    const success = await updateTaskScore('A', score)
+    if (success) {
+      console.log('Task A score saved successfully')
+      // Navigate back to welcome page
+      router.push('/welcome')
+    } else {
+      console.error('Failed to save Task A score')
+    }
+  } else {
+    console.error('No current assessment found')
+    console.error('Attempting to create assessment during task completion...')
+    const assessment = await getOrCreateAssessment(user.value!, 2) // Use non-null assertion since we know user exists here
+    if (assessment) {
+      console.log('Created assessment during completion, retrying score update...')
+      const success = await updateTaskScore('A', score)
+      if (success) {
+        console.log('Task A score saved successfully after retry')
+        router.push('/welcome')
+      } else {
+        console.error('Failed to save Task A score even after creating assessment')
+      }
+    }
   }
 }
 
-const onTaskComplete = (answers: Record<string, string>) => {
-  console.log('Task A completed with answers:', answers)
-  // Navigate to next task or results
-  router.push('/scoresheet')
-}
-
-const onTimeUp = () => {
+const onTimeUp = async () => {
   alert('Time is up! Moving to the next section.')
-  router.push('/scoresheet')
+  router.push('/task-b')
 }
 
-// Watch for question changes to reset current answer
+// Initialize assessment on component mount
+onMounted(async () => {
+  console.log('TaskA mounted, auth loading:', authLoading.value)
+  console.log('User at mount:', user.value)
+
+  // Wait for auth to complete if still loading
+  if (authLoading.value) {
+    console.log('Auth still loading, waiting...')
+    // Watch for auth loading to complete
+    const stopWatching = watch(
+      authLoading,
+      async (isLoading) => {
+        if (!isLoading) {
+          console.log('Auth loading completed, user:', user.value)
+          stopWatching() // Stop watching
+          await initializeAssessment()
+        }
+      },
+      { immediate: true },
+    )
+  } else {
+    // Auth already completed
+    await initializeAssessment()
+  }
+})
+
+const initializeAssessment = async () => {
+  if (user.value) {
+    console.log('Initializing assessment for user:', user.value.id)
+    const assessment = await getOrCreateAssessment(user.value, 2) // Pass user and default to grade 2
+    if (assessment) {
+      console.log('Assessment ready:', assessment.id)
+      console.log('currentAssessment.value:', currentAssessment.value)
+    } else {
+      console.error('Failed to get or create assessment')
+    }
+  } else {
+    console.error('No user found during assessment initialization')
+    console.error('This might indicate an authentication issue')
+  }
+} // Watch for question changes to reset current answer
 watch(
   () => taskData.value,
   () => {

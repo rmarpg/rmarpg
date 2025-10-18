@@ -6,34 +6,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { supabase } from '@/lib/supabase-client'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
 
-const router = useRouter()
-const user = ref<any>(null)
-
-onMounted(async () => {
-  const { data } = await supabase.auth.getSession()
-
-  if (data.session) {
-    const { data: userData } = await supabase.auth.getUser()
-    user.value = userData.user
-  }
-
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' && session) {
-      user.value = session.user
-    } else if (event === 'SIGNED_OUT') {
-      user.value = null
-    }
-  })
-})
-
-const handleLogout = async () => {
-  await supabase.auth.signOut()
-  router.push('/')
-}
+const { user, logout } = useAuth()
 </script>
 
 <template>
@@ -68,9 +43,7 @@ const handleLogout = async () => {
                 <span>Profile</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem @click="handleLogout" variant="destructive">
-                Logout
-              </DropdownMenuItem>
+              <DropdownMenuItem @click="logout" variant="destructive"> Logout </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

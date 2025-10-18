@@ -24,11 +24,28 @@ const login = async (e: Event) => {
   loading.value = true
 
   try {
-    const { error } = await supabase.auth.signInWithPassword(payload)
+    const { data, error } = await supabase.auth.signInWithPassword(payload)
     if (error != null) {
       errors.value = 'The provided credentials do not match our records'
+      return
     }
-    router.push('/welcome')
+
+    // Check if user is an administrator by looking at their profile
+    if (data.user) {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('first_name')
+        .eq('id', data.user.id)
+        .single()
+
+      if (!profileError && profile?.first_name === 'Administrator') {
+        router.push('/scoresheet')
+      } else {
+        router.push('/welcome')
+      }
+    } else {
+      router.push('/welcome')
+    }
   } finally {
     loading.value = false
   }

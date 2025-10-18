@@ -104,11 +104,12 @@
           Previous
         </button>
         <button
-          @click="nextQuestion"
-          :disabled="currentQuestionIndex === task.questions.length - 1"
-          class="rounded-lg bg-blue-500 px-6 py-2 text-white transition-colors duration-200 hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+          @click="
+            currentQuestionIndex === task.questions.length - 1 ? completeTask() : nextQuestion()
+          "
+          class="rounded-lg bg-blue-500 px-6 py-2 text-white transition-colors duration-200 hover:bg-blue-600"
         >
-          Next
+          {{ currentQuestionIndex === task.questions.length - 1 ? 'Finish' : 'Next' }}
         </button>
       </div>
     </div>
@@ -293,6 +294,10 @@ const speakQuestion = () => {
 
 const handleAnswer = (answer: string) => {
   answers.value[currentQuestion.value.id] = answer
+}
+
+const completeTask = () => {
+  emit('taskComplete', answers.value)
 }
 
 const nextQuestion = () => {

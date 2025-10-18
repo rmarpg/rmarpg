@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 
 const sidebarOpen = ref(true)
+const { logout } = useAuth()
 
 const toggleSidebar = () => {
   sidebarOpen.value = !sidebarOpen.value
+}
+
+const handleLogout = async () => {
+  await logout()
 }
 </script>
 
@@ -85,6 +91,27 @@ const toggleSidebar = () => {
             ></path>
           </svg>
         </RouterLink>
+
+        <!-- Logout Button -->
+        <button
+          @click="handleLogout"
+          :class="[
+            'inline-flex w-full cursor-pointer font-bold text-white transition-all duration-300 hover:bg-red-600',
+            sidebarOpen
+              ? 'justify-center bg-transparent px-4 py-2'
+              : 'justify-center bg-transparent px-2 py-2',
+          ]"
+        >
+          <span v-if="sidebarOpen">Logout</span>
+          <svg v-else class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+            ></path>
+          </svg>
+        </button>
       </nav>
     </aside>
 
