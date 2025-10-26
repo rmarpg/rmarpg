@@ -12,14 +12,6 @@
       >
         <!-- Image-based division question (J1) -->
         <div v-if="question.id === 'J1'" class="space-y-6">
-          <div class="flex justify-center">
-            <img
-              :src="`/${question.media?.file}`"
-              :alt="question.prompt"
-              class="max-w-md rounded-lg border shadow-sm"
-            />
-          </div>
-
           <div class="space-y-4">
             <label class="block text-sm font-medium text-gray-700">Enter your answer:</label>
             <div class="flex items-center justify-center">
