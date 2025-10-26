@@ -72,8 +72,21 @@ const router = createRouter({
     },
     {
       path: '/task-i',
-      name: 'task-i',
+      name: 'TaskI',
       component: () => import('@/views/TaskI.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/task-j',
+      name: 'TaskJ',
+      component: () => import('@/views/TaskJ.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/task-k',
+      name: 'TaskK',
+      component: () => import('@/views/TaskK.vue'),
+      meta: { requiresAuth: true },
     },
   ],
 })

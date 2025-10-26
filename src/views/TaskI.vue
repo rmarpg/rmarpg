@@ -231,8 +231,8 @@ const onTaskComplete = async (answers: Record<string, string>) => {
     const success = await updateTaskScore('I', score)
     if (success) {
       console.log('Task I score saved successfully')
-      // Navigate back to welcome page
-      router.push('/welcome')
+      // Navigate to Task J
+      router.push('/task-j')
     } else {
       console.error('Failed to save Task I score')
     }
@@ -245,7 +245,7 @@ const onTaskComplete = async (answers: Record<string, string>) => {
       const success = await updateTaskScore('I', score)
       if (success) {
         console.log('Task I score saved successfully after retry')
-        router.push('/welcome')
+        router.push('/task-j')
       } else {
         console.error('Failed to save Task I score even after creating assessment')
       }
@@ -253,9 +253,9 @@ const onTaskComplete = async (answers: Record<string, string>) => {
   }
 }
 
-const onTimeUp = async () => {
-  alert('Time is up! Moving to the next section.')
-  router.push('/welcome')
+const onTimeUp = () => {
+  console.log('Time up for Task I')
+  router.push('/task-j')
 }
 
 // Initialize assessment on component mount
