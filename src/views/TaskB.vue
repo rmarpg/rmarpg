@@ -1,6 +1,6 @@
 <template>
   <RMALayout>
-    <Task :task="taskData" :featuredNumber="375" @taskComplete="onTaskComplete" @timeUp="onTimeUp">
+    <Task :task="taskData" :featuredNumber="857" @taskComplete="onTaskComplete" @timeUp="onTimeUp">
       <template #default="{ question, onAnswer }">
         <!-- Multiple Choice Buttons -->
         <div class="space-y-4">
@@ -40,47 +40,21 @@ const { user, loading: authLoading } = useAuth()
 const { getOrCreateAssessment, updateTaskScore, calculateTaskScore, currentAssessment } =
   useAssessment()
 
-// Get Task A data from the JSON
+// Get Task B data from the JSON
 const taskData = computed(() => {
-  // Task A from rma.json
+  // Task B from rma.json
   return {
-    id: 'A',
-    name: 'Number Identification',
-    points: 4,
-    time_limit_seconds: 55,
+    id: 'B',
+    name: 'Number Discrimination',
+    points: 1,
+    time_limit_seconds: 40,
     questions: [
       {
-        id: 'A1',
-        prompt: 'How do you read this number? (375)',
+        id: 'B1',
+        prompt: 'Find a three-digit number greater than 857, with digit 5 in the tens place.',
         type: 'multiple_choice',
-        answer: 'Three hundred seventy-five',
-        options: [
-          'Three hundred seventy-five',
-          'Three hundred and seventy-five',
-          'Thirty-seven five',
-          'Three seven five',
-        ],
-      },
-      {
-        id: 'A2',
-        prompt: 'What is the place value of the digit 7 in this number?',
-        type: 'multiple_choice',
-        answer: 'Tens place',
-        options: ['Ones place', 'Tens place', 'Hundreds place', 'Thousands place'],
-      },
-      {
-        id: 'A3',
-        prompt: 'What is the value of the digit 7 in this number?',
-        type: 'multiple_choice',
-        answer: 'Seventy',
-        options: ['Seven', 'Seventy', 'Seven hundred', 'Three hundred'],
-      },
-      {
-        id: 'A4',
-        prompt: 'What is the expanded form of this number?',
-        type: 'multiple_choice',
-        answer: '300 + 70 + 5',
-        options: ['3 + 7 + 5', '30 + 70 + 50', '300 + 70 + 5', '375 + 0 + 0'],
+        answer: '858',
+        options: ['858', '859', '950', '951'],
       },
     ],
   }
@@ -93,23 +67,23 @@ const selectAnswer = (option: string, onAnswer: (answer: string) => void) => {
 }
 
 const onTaskComplete = async (answers: Record<string, string>) => {
-  console.log('Task A completed with answers:', answers)
+  console.log('Task B completed with answers:', answers)
   console.log('currentAssessment.value at completion:', currentAssessment.value)
 
-  // Calculate score for Task A
+  // Calculate score for Task B
   const score = calculateTaskScore(answers, taskData.value.questions, taskData.value.points)
-  console.log(`Task A score: ${score}/${taskData.value.points}`)
+  console.log(`Task B score: ${score}/${taskData.value.points}`)
 
-  // Update assessment with Task A score
+  // Update assessment with Task B score
   if (currentAssessment.value) {
     console.log('Updating score for assessment:', currentAssessment.value.id)
-    const success = await updateTaskScore('A', score)
+    const success = await updateTaskScore('B', score)
     if (success) {
-      console.log('Task A score saved successfully')
-      // Navigate to Task B
-      router.push('/task-b')
+      console.log('Task B score saved successfully')
+      // Navigate to Task C
+      router.push('/task-c')
     } else {
-      console.error('Failed to save Task A score')
+      console.error('Failed to save Task B score')
     }
   } else {
     console.error('No current assessment found')
@@ -117,12 +91,12 @@ const onTaskComplete = async (answers: Record<string, string>) => {
     const assessment = await getOrCreateAssessment(user.value!, 2) // Use non-null assertion since we know user exists here
     if (assessment) {
       console.log('Created assessment during completion, retrying score update...')
-      const success = await updateTaskScore('A', score)
+      const success = await updateTaskScore('B', score)
       if (success) {
-        console.log('Task A score saved successfully after retry')
-        router.push('/task-b')
+        console.log('Task B score saved successfully after retry')
+        router.push('/task-c')
       } else {
-        console.error('Failed to save Task A score even after creating assessment')
+        console.error('Failed to save Task B score even after creating assessment')
       }
     }
   }
@@ -130,12 +104,12 @@ const onTaskComplete = async (answers: Record<string, string>) => {
 
 const onTimeUp = async () => {
   alert('Time is up! Moving to the next section.')
-  router.push('/task-b')
+  router.push('/task-c')
 }
 
 // Initialize assessment on component mount
 onMounted(async () => {
-  console.log('TaskA mounted, auth loading:', authLoading.value)
+  console.log('TaskB mounted, auth loading:', authLoading.value)
   console.log('User at mount:', user.value)
 
   // Wait for auth to complete if still loading
@@ -173,7 +147,9 @@ const initializeAssessment = async () => {
     console.error('No user found during assessment initialization')
     console.error('This might indicate an authentication issue')
   }
-} // Watch for question changes to reset current answer
+}
+
+// Watch for question changes to reset current answer
 watch(
   () => taskData.value,
   () => {

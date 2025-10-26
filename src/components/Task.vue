@@ -76,15 +76,18 @@
               </svg>
             </button>
           </div>
-          <p class="text-lg leading-relaxed text-gray-700">{{ currentQuestion.prompt }}</p>
+          <div
+            class="text-lg leading-relaxed text-gray-700"
+            v-html="formatPrompt(currentQuestion.prompt)"
+          ></div>
         </div>
 
         <!-- Media Content (if available) -->
         <div v-if="currentQuestion.media" class="flex justify-center">
           <img
-            :src="`/images/${currentQuestion.media.file}`"
+            :src="`/${currentQuestion.media.file}`"
             :alt="`Question ${currentQuestion.id} illustration`"
-            class="max-w-md rounded-lg shadow-md"
+            class="max-w-md"
           />
         </div>
 
@@ -118,6 +121,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
 
 interface Question {
   id: string
@@ -165,6 +170,48 @@ let timerInterval: NodeJS.Timeout | null = null
 const currentQuestion = computed(() => props.task.questions[currentQuestionIndex.value])
 
 // Methods
+const formatPrompt = (prompt: string) => {
+  let formatted = prompt
+
+  // Replace fractions like "1/2" with proper KaTeX fractions
+  formatted = formatted.replace(/(\d+)\/(\d+)/g, (match, numerator, denominator) => {
+    try {
+      const latexFraction = `{\\normalsize\\frac{${numerator}}{${denominator}}}`
+      return katex.renderToString(latexFraction, {
+        displayMode: false,
+        throwOnError: false,
+      })
+    } catch (error) {
+      console.error('KaTeX fraction rendering error:', error)
+      return match
+    }
+  })
+
+  // Replace math expressions like "152 + 234 = ?" with KaTeX rendered math in vertical format
+  formatted = formatted.replace(
+    /(\d+)\s*([+\-×÷])\s*(\d+)\s*=\s*\?/g,
+    (match, num1, operator, num2) => {
+      try {
+        // Convert operator to LaTeX format
+        const latexOperator = operator.replace(/×/g, '\\times').replace(/÷/g, '\\div')
+
+        // Create vertical alignment with right-aligned numbers
+        const latexExpr = `\\begin{array}{r} ${num1} \\\\ ${latexOperator} \\: ${num2} \\\\ \\hline \\phantom{${num1}} \\end{array}`
+
+        return katex.renderToString(latexExpr, {
+          displayMode: true,
+          throwOnError: false,
+        })
+      } catch (error) {
+        console.error('KaTeX rendering error:', error)
+        return match // Return original if rendering fails
+      }
+    },
+  )
+
+  return formatted
+}
+
 const formatTime = (seconds: number) => {
   const mins = Math.floor(seconds / 60)
   const secs = seconds % 60

@@ -141,6 +141,9 @@ watch(selectedGrade, async () => {
               Grade Level
             </th>
             <th class="border border-gray-300 px-3 py-2 text-left text-sm font-semibold text-white">
+              Section
+            </th>
+            <th class="border border-gray-300 px-3 py-2 text-left text-sm font-semibold text-white">
               Date of Assessment
             </th>
             <th
@@ -224,6 +227,7 @@ watch(selectedGrade, async () => {
             <td class="border border-gray-300 px-3 py-3 text-center text-sm">
               {{ assessment.grade_level }}
             </td>
+            <td class="border border-gray-300 px-3 py-3 text-center text-sm"></td>
             <td class="border border-gray-300 px-3 py-3 text-sm">
               {{ formatDate(assessment.assessment_date) }}
             </td>

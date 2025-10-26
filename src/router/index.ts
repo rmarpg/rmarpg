@@ -35,6 +35,46 @@ const router = createRouter({
       name: 'task-a',
       component: () => import('@/views/TaskA.vue'),
     },
+    {
+      path: '/task-b',
+      name: 'task-b',
+      component: () => import('@/views/TaskB.vue'),
+    },
+    {
+      path: '/task-c',
+      name: 'task-c',
+      component: () => import('@/views/TaskC.vue'),
+    },
+    {
+      path: '/task-d',
+      name: 'task-d',
+      component: () => import('@/views/TaskD.vue'),
+    },
+    {
+      path: '/task-e',
+      name: 'task-e',
+      component: () => import('@/views/TaskE.vue'),
+    },
+    {
+      path: '/task-f',
+      name: 'task-f',
+      component: () => import('@/views/TaskF.vue'),
+    },
+    {
+      path: '/task-g',
+      name: 'task-g',
+      component: () => import('@/views/TaskG.vue'),
+    },
+    {
+      path: '/task-h',
+      name: 'task-h',
+      component: () => import('@/views/TaskH.vue'),
+    },
+    {
+      path: '/task-i',
+      name: 'task-i',
+      component: () => import('@/views/TaskI.vue'),
+    },
   ],
 })
 

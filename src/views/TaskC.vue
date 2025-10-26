@@ -1,9 +1,15 @@
 <template>
   <RMALayout>
-    <Task :task="taskData" :featuredNumber="375" @taskComplete="onTaskComplete" @timeUp="onTimeUp">
+    <Task :task="taskData" @taskComplete="onTaskComplete" @timeUp="onTimeUp">
       <template #default="{ question, onAnswer }">
         <!-- Multiple Choice Buttons -->
         <div class="space-y-4">
+          <div class="mb-6 text-center">
+            <div class="rounded-lg bg-blue-50 p-4 font-mono text-2xl font-bold text-blue-800">
+              {{ question.prompt }}
+            </div>
+          </div>
+
           <label class="block text-sm font-medium text-gray-700"> Choose your answer: </label>
 
           <!-- Multiple Choice Options -->
@@ -40,47 +46,42 @@ const { user, loading: authLoading } = useAuth()
 const { getOrCreateAssessment, updateTaskScore, calculateTaskScore, currentAssessment } =
   useAssessment()
 
-// Get Task A data from the JSON
+// Get Task C data from the JSON
 const taskData = computed(() => {
-  // Task A from rma.json
+  // Task C from rma.json
   return {
-    id: 'A',
-    name: 'Number Identification',
+    id: 'C',
+    name: 'Missing Number in Patterns',
     points: 4,
-    time_limit_seconds: 55,
+    time_limit_seconds: 120,
     questions: [
       {
-        id: 'A1',
-        prompt: 'How do you read this number? (375)',
+        id: 'C1',
+        prompt: 'Find the missing number: 65, 60, 55, 50, __ , 40',
         type: 'multiple_choice',
-        answer: 'Three hundred seventy-five',
-        options: [
-          'Three hundred seventy-five',
-          'Three hundred and seventy-five',
-          'Thirty-seven five',
-          'Three seven five',
-        ],
+        answer: '45',
+        options: ['35', '45', '55', '65'],
       },
       {
-        id: 'A2',
-        prompt: 'What is the place value of the digit 7 in this number?',
+        id: 'C2',
+        prompt: 'Find the missing number: 10, 13, 16, 19, 22, __',
         type: 'multiple_choice',
-        answer: 'Tens place',
-        options: ['Ones place', 'Tens place', 'Hundreds place', 'Thousands place'],
+        answer: '25',
+        options: ['23', '24', '25', '26'],
       },
       {
-        id: 'A3',
-        prompt: 'What is the value of the digit 7 in this number?',
+        id: 'C3',
+        prompt: 'Find the missing number: 450, 550, 650, __ , 850, 950',
         type: 'multiple_choice',
-        answer: 'Seventy',
-        options: ['Seven', 'Seventy', 'Seven hundred', 'Three hundred'],
+        answer: '750',
+        options: ['700', '720', '750', '780'],
       },
       {
-        id: 'A4',
-        prompt: 'What is the expanded form of this number?',
+        id: 'C4',
+        prompt: 'Find the missing number: 350, 300, 250, 200, __ , 100',
         type: 'multiple_choice',
-        answer: '300 + 70 + 5',
-        options: ['3 + 7 + 5', '30 + 70 + 50', '300 + 70 + 5', '375 + 0 + 0'],
+        answer: '150',
+        options: ['120', '130', '150', '170'],
       },
     ],
   }
@@ -93,23 +94,23 @@ const selectAnswer = (option: string, onAnswer: (answer: string) => void) => {
 }
 
 const onTaskComplete = async (answers: Record<string, string>) => {
-  console.log('Task A completed with answers:', answers)
+  console.log('Task C completed with answers:', answers)
   console.log('currentAssessment.value at completion:', currentAssessment.value)
 
-  // Calculate score for Task A
+  // Calculate score for Task C
   const score = calculateTaskScore(answers, taskData.value.questions, taskData.value.points)
-  console.log(`Task A score: ${score}/${taskData.value.points}`)
+  console.log(`Task C score: ${score}/${taskData.value.points}`)
 
-  // Update assessment with Task A score
+  // Update assessment with Task C score
   if (currentAssessment.value) {
     console.log('Updating score for assessment:', currentAssessment.value.id)
-    const success = await updateTaskScore('A', score)
+    const success = await updateTaskScore('C', score)
     if (success) {
-      console.log('Task A score saved successfully')
-      // Navigate to Task B
-      router.push('/task-b')
+      console.log('Task C score saved successfully')
+      // Navigate to Task D
+      router.push('/task-d')
     } else {
-      console.error('Failed to save Task A score')
+      console.error('Failed to save Task C score')
     }
   } else {
     console.error('No current assessment found')
@@ -117,12 +118,12 @@ const onTaskComplete = async (answers: Record<string, string>) => {
     const assessment = await getOrCreateAssessment(user.value!, 2) // Use non-null assertion since we know user exists here
     if (assessment) {
       console.log('Created assessment during completion, retrying score update...')
-      const success = await updateTaskScore('A', score)
+      const success = await updateTaskScore('C', score)
       if (success) {
-        console.log('Task A score saved successfully after retry')
-        router.push('/task-b')
+        console.log('Task C score saved successfully after retry')
+        router.push('/task-d')
       } else {
-        console.error('Failed to save Task A score even after creating assessment')
+        console.error('Failed to save Task C score even after creating assessment')
       }
     }
   }
@@ -130,12 +131,12 @@ const onTaskComplete = async (answers: Record<string, string>) => {
 
 const onTimeUp = async () => {
   alert('Time is up! Moving to the next section.')
-  router.push('/task-b')
+  router.push('/task-d')
 }
 
 // Initialize assessment on component mount
 onMounted(async () => {
-  console.log('TaskA mounted, auth loading:', authLoading.value)
+  console.log('TaskC mounted, auth loading:', authLoading.value)
   console.log('User at mount:', user.value)
 
   // Wait for auth to complete if still loading
@@ -173,7 +174,9 @@ const initializeAssessment = async () => {
     console.error('No user found during assessment initialization')
     console.error('This might indicate an authentication issue')
   }
-} // Watch for question changes to reset current answer
+}
+
+// Watch for question changes to reset current answer
 watch(
   () => taskData.value,
   () => {
