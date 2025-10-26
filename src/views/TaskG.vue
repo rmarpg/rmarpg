@@ -59,7 +59,15 @@
 
     <!-- Task Phase -->
     <Task v-else :task="taskData" @taskComplete="onTaskComplete" @timeUp="onTimeUp">
-      <template #default="{ question, onAnswer }">
+      <template
+        #default="{
+          question,
+          onAnswer,
+          feedbackState,
+          isShowingFeedback,
+          hasAnsweredCurrentQuestion,
+        }"
+      >
         <!-- Multiple Choice Buttons -->
         <div class="space-y-4">
           <label class="block text-sm font-medium text-gray-700"> Choose your answer: </label>
@@ -69,9 +77,14 @@
             <Button
               v-for="(option, index) in question.options"
               :key="index"
-              @click="selectAnswer(option, onAnswer)"
+              @click="!hasAnsweredCurrentQuestion && selectAnswer(option, onAnswer)"
               :variant="currentAnswer === option ? 'default' : 'outline'"
-              class="h-auto cursor-pointer justify-start p-4 text-left whitespace-normal"
+              :disabled="hasAnsweredCurrentQuestion"
+              :class="[
+                'h-auto justify-start p-4 text-left whitespace-normal transition-all duration-300',
+                hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : 'cursor-pointer',
+                getButtonFeedbackClass(option, question, feedbackState),
+              ]"
             >
               <span class="mr-3 font-medium">{{ String.fromCharCode(65 + index) }}.</span>
               {{ option }}
@@ -169,6 +182,26 @@ const selectAnswer = (option: string, onAnswer: (answer: string) => void) => {
   onAnswer(option)
 }
 
+const getButtonFeedbackClass = (option: string, question: any, feedbackState: any) => {
+  if (!feedbackState || feedbackState.questionId !== question.id) {
+    return ''
+  }
+
+  // Show feedback for the selected answer
+  if (currentAnswer.value === option) {
+    return feedbackState.isCorrect
+      ? 'border-green-500 bg-green-50 text-green-700 ring-2 ring-green-200'
+      : 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-200'
+  }
+
+  // Show correct answer if user selected wrong
+  if (!feedbackState.isCorrect && option === question.answer) {
+    return 'border-green-500 bg-green-50 text-green-700 ring-2 ring-green-200'
+  }
+
+  return ''
+}
+
 const onTaskComplete = async (answers: Record<string, string>) => {
   console.log('Task G completed with answers:', answers)
   console.log('currentAssessment.value at completion:', currentAssessment.value)
@@ -183,8 +216,8 @@ const onTaskComplete = async (answers: Record<string, string>) => {
     const success = await updateTaskScore('G', score)
     if (success) {
       console.log('Task G score saved successfully')
-      // Navigate back to welcome page
-      router.push('/welcome')
+      // Navigate to Task H
+      router.push('/task-h')
     } else {
       console.error('Failed to save Task G score')
     }
@@ -197,7 +230,7 @@ const onTaskComplete = async (answers: Record<string, string>) => {
       const success = await updateTaskScore('G', score)
       if (success) {
         console.log('Task G score saved successfully after retry')
-        router.push('/welcome')
+        router.push('/task-h')
       } else {
         console.error('Failed to save Task G score even after creating assessment')
       }
@@ -207,7 +240,7 @@ const onTaskComplete = async (answers: Record<string, string>) => {
 
 const onTimeUp = async () => {
   alert('Time is up! Moving to the next section.')
-  router.push('/welcome')
+  router.push('/task-h')
 }
 
 // Initialize assessment on component mount

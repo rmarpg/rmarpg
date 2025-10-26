@@ -1,7 +1,15 @@
 <template>
   <RMALayout>
     <Task :task="taskData" @taskComplete="onTaskComplete" @timeUp="onTimeUp">
-      <template #default="{ question, onAnswer }">
+      <template
+        #default="{
+          question,
+          onAnswer,
+          feedbackState,
+          isShowingFeedback,
+          hasAnsweredCurrentQuestion,
+        }"
+      >
         <!-- Special handling for I1 and I2 with custom multiplication choices -->
         <div
           v-if="question.id === 'I1' || question.id === 'I2'"
@@ -15,9 +23,16 @@
             <Button
               v-for="(choice, index) in getMultiplicationChoices(question.id)"
               :key="`${question.id}-${choice.letter}`"
-              @click="selectAnswer(choice.letter, onAnswer, question.id)"
+              @click="
+                !hasAnsweredCurrentQuestion && selectAnswer(choice.letter, onAnswer, question.id)
+              "
               :variant="answers[question.id] === choice.letter ? 'default' : 'outline'"
-              class="h-auto cursor-pointer justify-center border-2 p-6 text-center"
+              :disabled="hasAnsweredCurrentQuestion"
+              :class="[
+                'h-auto justify-center border-2 p-6 text-center transition-all duration-300',
+                hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : 'cursor-pointer',
+                getButtonFeedbackClass(choice.letter, question, feedbackState),
+              ]"
             >
               <div class="flex flex-col items-center space-y-2">
                 <div class="font-mono text-lg" v-html="formatMultiplication(choice.equation)"></div>
@@ -37,9 +52,14 @@
               <span v-html="formatMathExpression(question.prompt)"></span>
               <input
                 v-model="answers[question.id]"
-                @input="onAnswer(answers[question.id])"
+                @input="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
                 type="number"
-                class="no-spinners h-12 w-20 rounded border-2 border-gray-300 text-center text-xl focus:border-blue-500 focus:outline-none"
+                :disabled="hasAnsweredCurrentQuestion"
+                :class="[
+                  'no-spinners h-12 w-20 rounded border-2 text-center text-xl transition-all duration-300 focus:border-blue-500 focus:outline-none',
+                  hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '',
+                  getInputFeedbackClass(question, feedbackState),
+                ]"
                 placeholder="?"
               />
             </div>
@@ -48,9 +68,12 @@
           <!-- Submit button for numeric answers -->
           <div class="flex justify-center">
             <Button
-              @click="onAnswer(answers[question.id])"
-              :disabled="!answers[question.id]"
-              class="px-8 py-3 text-lg"
+              @click="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
+              :disabled="!answers[question.id] || hasAnsweredCurrentQuestion"
+              :class="[
+                'px-8 py-3 text-lg transition-all duration-300',
+                hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '',
+              ]"
             >
               Submit Answer
             </Button>
@@ -64,9 +87,14 @@
             <Button
               v-for="(option, index) in question.options"
               :key="index"
-              @click="selectAnswer(option, onAnswer, question.id)"
+              @click="!hasAnsweredCurrentQuestion && selectAnswer(option, onAnswer, question.id)"
               :variant="answers[question.id] === option ? 'default' : 'outline'"
-              class="h-auto cursor-pointer justify-start p-4 text-left whitespace-normal"
+              :disabled="hasAnsweredCurrentQuestion"
+              :class="[
+                'h-auto justify-start p-4 text-left whitespace-normal transition-all duration-300',
+                hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : 'cursor-pointer',
+                getButtonFeedbackClass(option, question, feedbackState),
+              ]"
             >
               <span class="mr-3 font-medium">{{ String.fromCharCode(65 + index) }}.</span>
               {{ option }}
@@ -215,6 +243,36 @@ const selectAnswer = (option: string, onAnswer: (answer: string) => void, questi
     answers.value[questionId] = option
   }
   onAnswer(option)
+}
+
+const getButtonFeedbackClass = (option: string, question: any, feedbackState: any) => {
+  if (!feedbackState || feedbackState.questionId !== question.id) {
+    return ''
+  }
+
+  // Show feedback for the selected answer
+  if (answers.value[question.id] === option) {
+    return feedbackState.isCorrect
+      ? 'border-green-500 bg-green-50 text-green-700 ring-2 ring-green-200'
+      : 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-200'
+  }
+
+  // Show correct answer if user selected wrong
+  if (!feedbackState.isCorrect && option === question.answer) {
+    return 'border-green-500 bg-green-50 text-green-700 ring-2 ring-green-200'
+  }
+
+  return ''
+}
+
+const getInputFeedbackClass = (question: any, feedbackState: any) => {
+  if (!feedbackState || feedbackState.questionId !== question.id) {
+    return 'border-gray-300'
+  }
+
+  return feedbackState.isCorrect
+    ? 'border-green-500 bg-green-50 ring-2 ring-green-200'
+    : 'border-red-500 bg-red-50 ring-2 ring-red-200'
 }
 
 const onTaskComplete = async (answers: Record<string, string>) => {

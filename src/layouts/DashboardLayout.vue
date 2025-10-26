@@ -1,9 +1,16 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useAuth } from '@/composables/useAuth'
+import { useRoute } from 'vue-router'
 
 const sidebarOpen = ref(true)
 const { logout } = useAuth()
+const route = useRoute()
+
+// Computed properties for active states
+const isScoresheet = computed(() => route.path === '/scoresheet')
+const isSummary = computed(() => route.path === '/summary')
+const isGraph = computed(() => route.path === '/graph')
 
 const toggleSidebar = () => {
   sidebarOpen.value = !sidebarOpen.value
@@ -35,10 +42,14 @@ const handleLogout = async () => {
         <RouterLink
           to="/scoresheet"
           :class="[
-            'inline-flex w-full font-bold text-white transition-all duration-300',
-            sidebarOpen
-              ? 'justify-center bg-blue-600 px-4 py-2'
-              : 'justify-center bg-blue-600 px-2 py-2',
+            'inline-flex w-full font-bold text-white transition-all duration-300 hover:bg-blue-600',
+            isScoresheet
+              ? sidebarOpen
+                ? 'justify-center bg-blue-600 px-4 py-2'
+                : 'justify-center bg-blue-600 px-2 py-2'
+              : sidebarOpen
+                ? 'justify-center bg-transparent px-4 py-2'
+                : 'justify-center bg-transparent px-2 py-2',
           ]"
         >
           <span v-if="sidebarOpen">Scoresheet</span>
@@ -53,15 +64,19 @@ const handleLogout = async () => {
         </RouterLink>
 
         <RouterLink
-          to="/scoresheet"
+          to="/summary"
           :class="[
-            'inline-flex w-full font-bold text-white transition-all duration-300',
-            sidebarOpen
-              ? 'justify-center bg-transparent px-4 py-2'
-              : 'justify-center bg-transparent px-2 py-2',
+            'inline-flex w-full font-bold text-white transition-all duration-300 hover:bg-blue-600',
+            isSummary
+              ? sidebarOpen
+                ? 'justify-center bg-blue-600 px-4 py-2'
+                : 'justify-center bg-blue-600 px-2 py-2'
+              : sidebarOpen
+                ? 'justify-center bg-transparent px-4 py-2'
+                : 'justify-center bg-transparent px-2 py-2',
           ]"
         >
-          <span v-if="sidebarOpen">Summary Graph</span>
+          <span v-if="sidebarOpen">Summary</span>
           <svg v-else class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               stroke-linecap="round"
@@ -73,12 +88,16 @@ const handleLogout = async () => {
         </RouterLink>
 
         <RouterLink
-          to="/scoresheet"
+          to="/graph"
           :class="[
-            'inline-flex w-full font-bold text-white transition-all duration-300',
-            sidebarOpen
-              ? 'justify-center bg-transparent px-4 py-2'
-              : 'justify-center bg-transparent px-2 py-2',
+            'inline-flex w-full font-bold text-white transition-all duration-300 hover:bg-blue-600',
+            isGraph
+              ? sidebarOpen
+                ? 'justify-center bg-blue-600 px-4 py-2'
+                : 'justify-center bg-blue-600 px-2 py-2'
+              : sidebarOpen
+                ? 'justify-center bg-transparent px-4 py-2'
+                : 'justify-center bg-transparent px-2 py-2',
           ]"
         >
           <span v-if="sidebarOpen">Graph</span>

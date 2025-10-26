@@ -1,7 +1,15 @@
 <template>
   <RMALayout>
     <Task :task="taskData" @taskComplete="onTaskComplete" @timeUp="onTimeUp">
-      <template #default="{ question, onAnswer }">
+      <template
+        #default="{
+          question,
+          onAnswer,
+          feedbackState,
+          isShowingFeedback,
+          hasAnsweredCurrentQuestion,
+        }"
+      >
         <!-- Featured image displayed for all subtasks -->
         <div class="mb-6 flex justify-center">
           <img src="/task-k.png" alt="Task K Featured Image" class="max-w-lg rounded-lg" />
@@ -23,14 +31,19 @@
               >
                 <input
                   v-model="input.value"
-                  @input="updateK1Answer"
+                  @input="!hasAnsweredCurrentQuestion && updateK1Answer"
                   type="text"
+                  :disabled="hasAnsweredCurrentQuestion"
                   :placeholder="`Shape ${index + 1}`"
-                  class="h-10 w-48 rounded border-2 border-gray-300 px-3 text-center focus:border-blue-500 focus:outline-none"
+                  :class="[
+                    'h-10 w-48 rounded border-2 border-gray-300 px-3 text-center focus:border-blue-500 focus:outline-none',
+                    hasAnsweredCurrentQuestion ? 'cursor-not-allowed opacity-75' : '',
+                  ]"
                 />
                 <Button
                   v-if="index === k1Inputs.length - 1 && k1Inputs.length < 4"
-                  @click="addK1Input"
+                  @click="!hasAnsweredCurrentQuestion && addK1Input"
+                  :disabled="hasAnsweredCurrentQuestion"
                   variant="outline"
                   size="sm"
                   class="h-10 w-10 p-0"
@@ -39,7 +52,8 @@
                 </Button>
                 <Button
                   v-if="k1Inputs.length > 1"
-                  @click="removeK1Input(index)"
+                  @click="!hasAnsweredCurrentQuestion && removeK1Input(index)"
+                  :disabled="hasAnsweredCurrentQuestion"
                   variant="outline"
                   size="sm"
                   class="h-10 w-10 p-0 text-red-500 hover:text-red-700"
@@ -51,9 +65,12 @@
 
             <div class="flex justify-center">
               <Button
-                @click="submitK1Answer(onAnswer)"
-                :disabled="!hasValidK1Answer"
-                class="px-8 py-3 text-lg"
+                @click="!hasAnsweredCurrentQuestion && submitK1Answer(onAnswer)"
+                :disabled="!hasValidK1Answer || hasAnsweredCurrentQuestion"
+                :class="[
+                  'px-8 py-3 text-lg',
+                  hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '',
+                ]"
               >
                 Submit Answer
               </Button>
@@ -81,11 +98,14 @@
                 <div
                   v-for="shape in availableShapes"
                   :key="shape.name"
-                  :draggable="!isMobile"
-                  @dragstart="onDragStart($event, shape)"
-                  @click="onShapeClick(shape)"
+                  :draggable="!isMobile && !hasAnsweredCurrentQuestion"
+                  @dragstart="!hasAnsweredCurrentQuestion && onDragStart($event, shape)"
+                  @click="!hasAnsweredCurrentQuestion && onShapeClick(shape)"
                   :class="[
-                    'cursor-pointer rounded-lg border-2 bg-white p-2 shadow-sm transition-all select-none hover:scale-105',
+                    hasAnsweredCurrentQuestion
+                      ? 'cursor-not-allowed opacity-75'
+                      : 'cursor-pointer hover:scale-105',
+                    'rounded-lg border-2 bg-white p-2 shadow-sm transition-all select-none',
                     selectedShape?.name === shape.name
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-300 hover:border-blue-400',
@@ -118,18 +138,19 @@
                   v-for="(slot, index) in patternSlots"
                   :key="index"
                   :class="[
-                    'pattern-slot flex h-16 w-16 cursor-pointer items-center justify-center rounded-lg border-2 transition-all md:h-20 md:w-20',
+                    'pattern-slot flex h-16 w-16 items-center justify-center rounded-lg border-2 transition-all md:h-20 md:w-20',
+                    hasAnsweredCurrentQuestion ? 'cursor-not-allowed opacity-75' : 'cursor-pointer',
                     slot.filled
                       ? 'border-green-400 bg-green-50'
-                      : selectedShape && !isMobile
+                      : selectedShape && !isMobile && !hasAnsweredCurrentQuestion
                         ? 'border-dashed border-blue-400 bg-blue-50'
                         : 'border-dashed border-gray-400 bg-gray-50',
                   ]"
                   @dragover.prevent
-                  @drop="onDrop($event, index)"
-                  @dragenter.prevent="onDragEnter($event, index)"
-                  @dragleave="onDragLeave($event, index)"
-                  @click="onSlotClick(index)"
+                  @drop="!hasAnsweredCurrentQuestion && onDrop($event, index)"
+                  @dragenter.prevent="!hasAnsweredCurrentQuestion && onDragEnter($event, index)"
+                  @dragleave="!hasAnsweredCurrentQuestion && onDragLeave($event, index)"
+                  @click="!hasAnsweredCurrentQuestion && onSlotClick(index)"
                 >
                   <img
                     v-if="slot.shape"
@@ -151,13 +172,18 @@
 
           <!-- Reset and Submit buttons -->
           <div class="flex justify-center space-x-4">
-            <Button @click="resetPattern" variant="outline" class="px-6 py-2">
+            <Button
+              @click="!hasAnsweredCurrentQuestion && resetPattern"
+              :disabled="hasAnsweredCurrentQuestion"
+              variant="outline"
+              class="px-6 py-2"
+            >
               Reset Pattern
             </Button>
             <Button
-              @click="submitK2Answer(onAnswer)"
-              :disabled="!isPatternComplete"
-              class="px-8 py-3 text-lg"
+              @click="!hasAnsweredCurrentQuestion && submitK2Answer(onAnswer)"
+              :disabled="!isPatternComplete || hasAnsweredCurrentQuestion"
+              :class="['px-8 py-3 text-lg', hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '']"
             >
               Complete Pattern
             </Button>
@@ -180,9 +206,12 @@
                 <div
                   v-for="shape in k3Shapes"
                   :key="shape.name"
-                  @click="toggleK3Shape(shape, onAnswer)"
+                  @click="!hasAnsweredCurrentQuestion && toggleK3Shape(shape, onAnswer)"
                   :class="[
-                    'cursor-pointer rounded-lg border-4 bg-white p-4 shadow-sm transition-all hover:scale-105',
+                    hasAnsweredCurrentQuestion
+                      ? 'cursor-not-allowed opacity-75'
+                      : 'cursor-pointer hover:scale-105',
+                    'rounded-lg border-4 bg-white p-4 shadow-sm transition-all',
                     selectedK3Shapes.includes(shape.name)
                       ? 'border-green-500 bg-green-50'
                       : 'border-gray-300 hover:border-blue-400',
@@ -208,13 +237,18 @@
 
           <!-- Submit button -->
           <div class="flex justify-center space-x-4">
-            <Button @click="clearK3Selection" variant="outline" class="px-6 py-2">
+            <Button
+              @click="!hasAnsweredCurrentQuestion && clearK3Selection"
+              :disabled="hasAnsweredCurrentQuestion"
+              variant="outline"
+              class="px-6 py-2"
+            >
               Clear Selection
             </Button>
             <Button
-              @click="submitK3Answer(onAnswer)"
-              :disabled="selectedK3Shapes.length === 0"
-              class="px-8 py-3 text-lg"
+              @click="!hasAnsweredCurrentQuestion && submitK3Answer(onAnswer)"
+              :disabled="selectedK3Shapes.length === 0 || hasAnsweredCurrentQuestion"
+              :class="['px-8 py-3 text-lg', hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '']"
             >
               Submit Selection
             </Button>
@@ -236,9 +270,12 @@
                 <div
                   v-for="shape in k4Shapes"
                   :key="shape.name"
-                  @click="toggleK4Shape(shape, onAnswer)"
+                  @click="!hasAnsweredCurrentQuestion && toggleK4Shape(shape, onAnswer)"
                   :class="[
-                    'cursor-pointer rounded-lg border-4 bg-white p-4 shadow-sm transition-all hover:scale-105',
+                    hasAnsweredCurrentQuestion
+                      ? 'cursor-not-allowed opacity-75'
+                      : 'cursor-pointer hover:scale-105',
+                    'rounded-lg border-4 bg-white p-4 shadow-sm transition-all',
                     selectedK4Shapes.includes(shape.name)
                       ? 'border-purple-500 bg-purple-50'
                       : 'border-gray-300 hover:border-purple-400',
@@ -264,13 +301,18 @@
 
           <!-- Submit button -->
           <div class="flex justify-center space-x-4">
-            <Button @click="clearK4Selection" variant="outline" class="px-6 py-2">
+            <Button
+              @click="!hasAnsweredCurrentQuestion && clearK4Selection"
+              :disabled="hasAnsweredCurrentQuestion"
+              variant="outline"
+              class="px-6 py-2"
+            >
               Clear Selection
             </Button>
             <Button
-              @click="submitK4Answer(onAnswer)"
-              :disabled="selectedK4Shapes.length === 0"
-              class="px-8 py-3 text-lg"
+              @click="!hasAnsweredCurrentQuestion && submitK4Answer(onAnswer)"
+              :disabled="selectedK4Shapes.length === 0 || hasAnsweredCurrentQuestion"
+              :class="['px-8 py-3 text-lg', hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '']"
             >
               Submit Selection
             </Button>
@@ -287,9 +329,13 @@
             <Button
               v-for="(option, index) in question.options"
               :key="index"
-              @click="selectAnswer(option, onAnswer, question.id)"
+              @click="!hasAnsweredCurrentQuestion && selectAnswer(option, onAnswer, question.id)"
               :variant="answers[question.id] === option ? 'default' : 'outline'"
-              class="h-auto cursor-pointer justify-start p-4 text-left"
+              :disabled="hasAnsweredCurrentQuestion"
+              :class="[
+                'h-auto justify-start p-4 text-left',
+                hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : 'cursor-pointer',
+              ]"
             >
               <span class="mr-3 font-medium">{{ String.fromCharCode(65 + index) }}.</span>
               {{ option }}
@@ -299,15 +345,19 @@
           <div v-else class="flex items-center justify-center space-x-4">
             <input
               v-model="answers[question.id]"
-              @input="onAnswer(answers[question.id])"
+              @input="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
               type="text"
-              class="h-12 w-64 rounded border-2 border-gray-300 px-4 text-center text-lg focus:border-blue-500 focus:outline-none"
+              :disabled="hasAnsweredCurrentQuestion"
+              :class="[
+                'h-12 w-64 rounded border-2 border-gray-300 px-4 text-center text-lg focus:border-blue-500 focus:outline-none',
+                hasAnsweredCurrentQuestion ? 'cursor-not-allowed opacity-75' : '',
+              ]"
               placeholder="Enter your answer"
             />
             <Button
-              @click="onAnswer(answers[question.id])"
-              :disabled="!answers[question.id]"
-              class="px-6 py-3 text-lg"
+              @click="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
+              :disabled="!answers[question.id] || hasAnsweredCurrentQuestion"
+              :class="['px-6 py-3 text-lg', hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '']"
             >
               Submit
             </Button>
@@ -570,6 +620,17 @@ const selectAnswer = (option: string, onAnswer: (answer: string) => void, questi
     answers.value[questionId] = option
   }
   onAnswer(option)
+}
+
+// Visual feedback for TaskK (simplified for complex interactions)
+const getFeedbackClass = (questionId: string, feedbackState: any) => {
+  if (!feedbackState || feedbackState.questionId !== questionId) {
+    return ''
+  }
+
+  return feedbackState.isCorrect
+    ? 'ring-4 ring-green-300 ring-opacity-50'
+    : 'ring-4 ring-red-300 ring-opacity-50'
 }
 
 // Get Task K data with proper TypeScript types

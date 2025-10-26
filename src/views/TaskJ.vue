@@ -1,7 +1,15 @@
 <template>
   <RMALayout>
     <Task :task="taskData" @taskComplete="onTaskComplete" @timeUp="onTimeUp">
-      <template #default="{ question, onAnswer }">
+      <template
+        #default="{
+          question,
+          onAnswer,
+          feedbackState,
+          isShowingFeedback,
+          hasAnsweredCurrentQuestion,
+        }"
+      >
         <!-- Image-based division question (J1) -->
         <div v-if="question.id === 'J1'" class="space-y-6">
           <div class="flex justify-center">
@@ -17,18 +25,26 @@
             <div class="flex items-center justify-center">
               <input
                 v-model="answers[question.id]"
-                @input="onAnswer(answers[question.id])"
+                @input="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
                 type="number"
-                class="no-spinners h-12 w-20 rounded border-2 border-gray-300 text-center text-xl focus:border-blue-500 focus:outline-none"
+                :disabled="hasAnsweredCurrentQuestion"
+                :class="[
+                  'no-spinners h-12 w-20 rounded border-2 text-center text-xl transition-all duration-300 focus:border-blue-500 focus:outline-none',
+                  hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '',
+                  getInputFeedbackClass(question, feedbackState),
+                ]"
                 placeholder="?"
               />
             </div>
 
             <div class="flex justify-center">
               <Button
-                @click="onAnswer(answers[question.id])"
-                :disabled="!answers[question.id]"
-                class="px-8 py-3 text-lg"
+                @click="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
+                :disabled="!answers[question.id] || hasAnsweredCurrentQuestion"
+                :class="[
+                  'px-8 py-3 text-lg transition-all duration-300',
+                  hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '',
+                ]"
               >
                 Submit Answer
               </Button>
@@ -49,18 +65,26 @@
             <div class="flex items-center justify-center">
               <input
                 v-model="answers[question.id]"
-                @input="onAnswer(answers[question.id])"
+                @input="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
                 type="number"
-                class="no-spinners h-12 w-20 rounded border-2 border-gray-300 text-center text-xl focus:border-blue-500 focus:outline-none"
+                :disabled="hasAnsweredCurrentQuestion"
+                :class="[
+                  'no-spinners h-12 w-20 rounded border-2 text-center text-xl transition-all duration-300 focus:border-blue-500 focus:outline-none',
+                  hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '',
+                  getInputFeedbackClass(question, feedbackState),
+                ]"
                 placeholder="?"
               />
             </div>
 
             <div class="flex justify-center">
               <Button
-                @click="onAnswer(answers[question.id])"
-                :disabled="!answers[question.id]"
-                class="px-8 py-3 text-lg"
+                @click="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
+                :disabled="!answers[question.id] || hasAnsweredCurrentQuestion"
+                :class="[
+                  'px-8 py-3 text-lg transition-all duration-300',
+                  hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '',
+                ]"
               >
                 Submit Answer
               </Button>
@@ -81,18 +105,26 @@
             <div class="flex items-center justify-center">
               <input
                 v-model="answers[question.id]"
-                @input="onAnswer(answers[question.id])"
+                @input="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
                 type="number"
-                class="no-spinners h-12 w-20 rounded border-2 border-gray-300 text-center text-xl focus:border-blue-500 focus:outline-none"
+                :disabled="hasAnsweredCurrentQuestion"
+                :class="[
+                  'no-spinners h-12 w-20 rounded border-2 text-center text-xl transition-all duration-300 focus:border-blue-500 focus:outline-none',
+                  hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '',
+                  getInputFeedbackClass(question, feedbackState),
+                ]"
                 placeholder="?"
               />
             </div>
 
             <div class="flex justify-center">
               <Button
-                @click="onAnswer(answers[question.id])"
-                :disabled="!answers[question.id]"
-                class="px-8 py-3 text-lg"
+                @click="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
+                :disabled="!answers[question.id] || hasAnsweredCurrentQuestion"
+                :class="[
+                  'px-8 py-3 text-lg transition-all duration-300',
+                  hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '',
+                ]"
               >
                 Submit Answer
               </Button>
@@ -130,6 +162,16 @@ const { getOrCreateAssessment, updateTaskScore, calculateTaskScore, currentAsses
 const formatMathExpression = (prompt: string) => {
   // Handle division symbols and mathematical formatting
   return prompt.replace(/÷/g, '÷').replace(/\?/g, '<span class="text-blue-600 font-bold">?</span>')
+}
+
+const getInputFeedbackClass = (question: any, feedbackState: any) => {
+  if (!feedbackState || feedbackState.questionId !== question.id) {
+    return 'border-gray-300'
+  }
+
+  return feedbackState.isCorrect
+    ? 'border-green-500 bg-green-50 ring-2 ring-green-200'
+    : 'border-red-500 bg-red-50 ring-2 ring-red-200'
 }
 
 // Get Task J data with proper TypeScript types

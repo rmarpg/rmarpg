@@ -93,7 +93,13 @@
 
         <!-- Answer Input Slot -->
         <div class="mt-8">
-          <slot :question="currentQuestion" :onAnswer="handleAnswer"></slot>
+          <slot
+            :question="currentQuestion"
+            :onAnswer="handleAnswer"
+            :feedbackState="feedbackState"
+            :isShowingFeedback="isShowingFeedback"
+            :hasAnsweredCurrentQuestion="hasAnsweredCurrentQuestion"
+          ></slot>
         </div>
       </div>
 
@@ -155,6 +161,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   taskComplete: [answers: Record<string, string>]
   timeUp: []
+  answerFeedback: [isCorrect: boolean, questionId: string]
 }>()
 
 // State
@@ -162,6 +169,13 @@ const currentQuestionIndex = ref(0)
 const timeLeft = ref(props.task.time_limit_seconds)
 const answers = ref<Record<string, string>>({})
 const isSpeaking = ref(false)
+const feedbackState = ref<{ questionId: string; isCorrect: boolean } | null>(null)
+const isShowingFeedback = ref(false)
+const hasAnsweredCurrentQuestion = ref(false)
+
+// Audio elements for feedback
+const correctAudio = ref<HTMLAudioElement | null>(null)
+const wrongAudio = ref<HTMLAudioElement | null>(null)
 
 // Timer
 let timerInterval: NodeJS.Timeout | null = null
@@ -340,7 +354,47 @@ const speakQuestion = () => {
 }
 
 const handleAnswer = (answer: string) => {
+  // Don't allow new answers if already answered this question
+  if (hasAnsweredCurrentQuestion.value) {
+    return
+  }
+
   answers.value[currentQuestion.value.id] = answer
+  hasAnsweredCurrentQuestion.value = true
+
+  // Check if answer is correct and provide feedback
+  const isCorrect = checkAnswer(answer, currentQuestion.value)
+  provideFeedback(isCorrect, currentQuestion.value.id)
+
+  // Emit feedback event for task-specific handling
+  emit('answerFeedback', isCorrect, currentQuestion.value.id)
+}
+
+const checkAnswer = (userAnswer: string, question: Question): boolean => {
+  const correctAnswer = question.answer?.toString().toLowerCase().trim()
+  const userAnswerNormalized = userAnswer.toString().toLowerCase().trim()
+  return correctAnswer === userAnswerNormalized
+}
+
+const provideFeedback = (isCorrect: boolean, questionId: string) => {
+  // Set feedback state for visual feedback and disable interactions
+  feedbackState.value = { questionId, isCorrect }
+  isShowingFeedback.value = true
+
+  // Play audio feedback
+  if (isCorrect && correctAudio.value) {
+    correctAudio.value.currentTime = 0
+    correctAudio.value.play().catch(console.error)
+  } else if (!isCorrect && wrongAudio.value) {
+    wrongAudio.value.currentTime = 0
+    wrongAudio.value.play().catch(console.error)
+  }
+
+  // Clear feedback state after 2 seconds
+  setTimeout(() => {
+    feedbackState.value = null
+    isShowingFeedback.value = false
+  }, 2000)
 }
 
 const completeTask = () => {
@@ -350,18 +404,43 @@ const completeTask = () => {
 const nextQuestion = () => {
   if (currentQuestionIndex.value < props.task.questions.length - 1) {
     currentQuestionIndex.value++
+    // Reset answer state for new question
+    hasAnsweredCurrentQuestion.value = false
+    isShowingFeedback.value = false
+    feedbackState.value = null
   }
 }
 
 const previousQuestion = () => {
   if (currentQuestionIndex.value > 0) {
     currentQuestionIndex.value--
+    // Reset answer state for new question
+    hasAnsweredCurrentQuestion.value = false
+    isShowingFeedback.value = false
+    feedbackState.value = null
+  }
+}
+
+// Initialize audio feedback
+const initializeAudio = () => {
+  correctAudio.value = new Audio('/correct.mp3')
+  wrongAudio.value = new Audio('/wrong.mp3')
+
+  // Preload audio files
+  if (correctAudio.value) {
+    correctAudio.value.preload = 'auto'
+    correctAudio.value.volume = 0.7
+  }
+  if (wrongAudio.value) {
+    wrongAudio.value.preload = 'auto'
+    wrongAudio.value.volume = 0.7
   }
 }
 
 // Lifecycle
 onMounted(() => {
   startTimer()
+  initializeAudio()
 })
 
 onUnmounted(() => {
