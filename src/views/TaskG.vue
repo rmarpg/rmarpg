@@ -133,7 +133,7 @@ const taskData = computed(() => {
         type: 'multiple_choice',
         answer: '21',
         options: ['21', '19', '23', '17'],
-        media: { type: 'image', file: 'mangoes-subtraction.png' },
+        media: { type: 'image', file: 'task-g.png' },
       },
       {
         id: 'G2a',
