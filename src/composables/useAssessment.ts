@@ -99,6 +99,7 @@ export function useAssessment() {
         task_f_score: currentAssessment.value.task_f_score,
         task_g_score: currentAssessment.value.task_g_score,
         task_h_score: currentAssessment.value.task_h_score,
+        task_i_score: currentAssessment.value.task_i_score,
         task_j_score: currentAssessment.value.task_j_score,
         task_k_score: currentAssessment.value.task_k_score,
         [`task_${taskName.toLowerCase()}_score`]: score,
@@ -108,7 +109,7 @@ export function useAssessment() {
         (sum: number, score: any) => sum + (Number(score) || 0),
         0,
       )
-      const overallScore = (totalScore / 40) * 100 // Assuming 40 is max possible score
+      const overallScore = (totalScore / 1100) * 100 // 11 tasks × 100 points each = 1100 max possible score
 
       updateData.total_score = totalScore
       updateData.overall_score = parseFloat(overallScore.toFixed(2))

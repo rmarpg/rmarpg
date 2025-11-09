@@ -683,8 +683,8 @@ const onTaskComplete = async (taskAnswers: Record<string, string>) => {
     const success = await updateTaskScore('K', score)
     if (success) {
       console.log('Task K score saved successfully')
-      // Navigate back to welcome page (end of tasks)
-      router.push('/welcome')
+      // Navigate to results page (assessment complete)
+      router.push('/results')
     } else {
       console.error('Failed to save Task K score')
     }
@@ -697,7 +697,7 @@ const onTaskComplete = async (taskAnswers: Record<string, string>) => {
       const success = await updateTaskScore('K', score)
       if (success) {
         console.log('Task K score saved successfully after retry')
-        router.push('/welcome')
+        router.push('/results')
       } else {
         console.error('Failed to save Task K score even after creating assessment')
       }
@@ -709,7 +709,7 @@ const onTaskComplete = async (taskAnswers: Record<string, string>) => {
 
 const onTimeUp = () => {
   console.log('Time up for Task K')
-  router.push('/welcome')
+  router.push('/results')
 }
 
 // Initialize assessment when component mounts

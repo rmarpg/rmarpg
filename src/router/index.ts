@@ -106,6 +106,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/results',
+      name: 'results',
+      component: () => import('@/views/Results.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/graph',
       name: 'graph',
       component: () => import('@/views/AdminGraphs.vue'),

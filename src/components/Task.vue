@@ -9,27 +9,52 @@
         </div>
         <div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
           <!-- Timer -->
-          <div class="flex items-center space-x-2 rounded-lg bg-orange-100 px-3 py-2">
-            <svg
-              class="h-4 w-4 text-orange-600 sm:h-5 sm:w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div class="flex items-center space-x-4">
+            <!-- Timer -->
+            <div class="flex items-center space-x-2 rounded-lg bg-orange-100 px-3 py-2">
+              <svg
+                class="h-5 w-5 text-orange-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+              <span class="font-mono font-medium text-orange-600">{{ formatTime(timeLeft) }}</span>
+            </div>
+            <!-- Image Re-view Button -->
+            <button
+              v-if="hasFeaturedImages"
+              @click="
+                () => {
+                  currentImageIndex = 0
+                  showImageModal = true
+                }
+              "
+              class="flex items-center space-x-2 rounded-lg bg-blue-100 px-3 py-2 text-blue-600 transition-colors hover:bg-blue-200"
+              title="Re-view featured images"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-            <span class="font-mono text-sm font-medium text-orange-600 sm:text-base">{{
-              formatTime(timeLeft)
-            }}</span>
-          </div>
-          <!-- Progress -->
-          <div class="text-sm text-gray-600">
-            {{ currentQuestionIndex + 1 }} / {{ task.questions.length }}
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                ></path>
+              </svg>
+              <span class="hidden text-sm font-medium sm:inline"
+                >View Images ({{ featuredImages.length }})</span
+              >
+            </button>
+            <!-- Progress -->
+            <div class="text-sm text-gray-600">
+              {{ currentQuestionIndex + 1 }} / {{ task.questions.length }}
+            </div>
           </div>
         </div>
       </div>
@@ -124,6 +149,96 @@
         </button>
       </div>
     </div>
+
+    <!-- Image Re-view Modal -->
+    <div
+      v-if="showImageModal"
+      class="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black"
+      @click="showImageModal = false"
+    >
+      <div class="relative max-h-[90vh] max-w-[90vw] rounded-lg bg-white p-6 shadow-xl" @click.stop>
+        <!-- Modal Header -->
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-gray-900">Featured Images - {{ task.name }}</h3>
+          <button
+            @click="showImageModal = false"
+            class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          >
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Image Navigation -->
+        <div
+          v-if="featuredImages.length > 1"
+          class="mb-4 flex items-center justify-center space-x-4"
+        >
+          <button
+            @click="currentImageIndex = Math.max(0, currentImageIndex - 1)"
+            :disabled="currentImageIndex === 0"
+            class="rounded-lg bg-gray-100 p-2 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 19l-7-7 7-7"
+              ></path>
+            </svg>
+          </button>
+          <span class="text-sm text-gray-600">
+            {{ currentImageIndex + 1 }} / {{ featuredImages.length }}
+          </span>
+          <button
+            @click="currentImageIndex = Math.min(featuredImages.length - 1, currentImageIndex + 1)"
+            :disabled="currentImageIndex === featuredImages.length - 1"
+            class="rounded-lg bg-gray-100 p-2 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 5l7 7-7 7"
+              ></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Current Image -->
+        <div class="flex justify-center">
+          <div v-if="featuredImages[currentImageIndex]" class="text-center">
+            <img
+              :src="featuredImages[currentImageIndex].src"
+              :alt="featuredImages[currentImageIndex].alt"
+              class="max-h-[60vh] max-w-full rounded-lg shadow-md"
+              @error="onImageError"
+            />
+            <p class="mt-2 text-sm text-gray-600">
+              {{ featuredImages[currentImageIndex].description }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Close Button -->
+        <div class="mt-6 text-center">
+          <button
+            @click="showImageModal = false"
+            class="rounded-lg bg-blue-500 px-6 py-2 text-white hover:bg-blue-600"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -175,6 +290,10 @@ const feedbackState = ref<{ questionId: string; isCorrect: boolean } | null>(nul
 const isShowingFeedback = ref(false)
 const hasAnsweredCurrentQuestion = ref(false)
 
+// Image re-view functionality
+const showImageModal = ref(false)
+const currentImageIndex = ref(0)
+
 // Audio elements for feedback
 const correctAudio = ref<HTMLAudioElement | null>(null)
 const wrongAudio = ref<HTMLAudioElement | null>(null)
@@ -184,6 +303,58 @@ let timerInterval: NodeJS.Timeout | null = null
 
 // Computed
 const currentQuestion = computed(() => props.task.questions[currentQuestionIndex.value])
+
+// Image re-view computed properties
+const featuredImages = computed(() => {
+  const images: Array<{ src: string; alt: string; description: string }> = []
+
+  // Collect all unique images from task questions
+  const imageFiles = new Set<string>()
+
+  props.task.questions.forEach((question) => {
+    if (question.media?.type === 'image' && question.media.file) {
+      if (!imageFiles.has(question.media.file)) {
+        imageFiles.add(question.media.file)
+        images.push({
+          src: `/${question.media.file}`,
+          alt: `Question ${question.id} illustration`,
+          description: `Image for ${question.prompt.length > 50 ? question.prompt.substring(0, 50) + '...' : question.prompt}`,
+        })
+      }
+    }
+  })
+
+  // Add task-specific featured images
+  const taskSpecificImages: Record<string, { src: string; alt: string; description: string }> = {
+    E: {
+      src: '/task-e.png',
+      alt: 'Task E Featured Image',
+      description: 'Addition task featured image',
+    },
+    G: {
+      src: '/task-g.png',
+      alt: 'Task G Featured Image',
+      description: 'Subtraction task featured image',
+    },
+    K: {
+      src: '/task-k.png',
+      alt: 'Task K Featured Image',
+      description: 'Geometric pattern task featured image',
+    },
+  }
+
+  if (taskSpecificImages[props.task.id]) {
+    // Add task-specific image at the beginning if not already present
+    const taskImage = taskSpecificImages[props.task.id]
+    if (!images.find((img) => img.src === taskImage.src)) {
+      images.unshift(taskImage)
+    }
+  }
+
+  return images
+})
+
+const hasFeaturedImages = computed(() => featuredImages.value.length > 0)
 
 // Methods
 const formatPrompt = (prompt: string) => {
@@ -437,6 +608,11 @@ const initializeAudio = () => {
     wrongAudio.value.preload = 'auto'
     wrongAudio.value.volume = 0.7
   }
+}
+
+// Image error handler
+const onImageError = (event: Event) => {
+  console.error('Failed to load image in modal:', event)
 }
 
 // Lifecycle
