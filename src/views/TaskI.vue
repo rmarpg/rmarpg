@@ -19,7 +19,7 @@
           <label class="block text-sm font-medium text-gray-700"> Choose your answer: </label>
 
           <!-- Custom multiplication equation choices -->
-          <div class="grid gap-4">
+          <div class="grid gap-3 sm:gap-4">
             <Button
               v-for="(choice, index) in getMultiplicationChoices(question.id)"
               :key="`${question.id}-${choice.letter}`"
@@ -29,14 +29,19 @@
               :variant="answers[question.id] === choice.letter ? 'default' : 'outline'"
               :disabled="hasAnsweredCurrentQuestion"
               :class="[
-                'h-auto justify-center border-2 p-6 text-center transition-all duration-300',
-                hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : 'cursor-pointer',
+                'h-auto min-h-[80px] touch-manipulation justify-center border-2 p-4 text-center transition-all duration-300 sm:p-6',
+                hasAnsweredCurrentQuestion
+                  ? 'cursor-not-allowed'
+                  : 'cursor-pointer hover:shadow-md active:scale-[0.98]',
                 getButtonFeedbackClass(choice.letter, question, feedbackState),
               ]"
             >
               <div class="flex flex-col items-center space-y-2">
-                <div class="font-mono text-lg" v-html="formatMultiplication(choice.equation)"></div>
-                <div class="text-xl font-bold">{{ choice.letter }}</div>
+                <div
+                  class="font-mono text-base sm:text-lg"
+                  v-html="formatMultiplication(choice.equation)"
+                ></div>
+                <div class="text-lg font-bold sm:text-xl">{{ choice.letter }}</div>
               </div>
             </Button>
           </div>
@@ -83,7 +88,7 @@
         <div v-else class="space-y-4">
           <label class="block text-sm font-medium text-gray-700"> Choose your answer: </label>
 
-          <div v-if="question.type === 'multiple_choice'" class="grid gap-3">
+          <div v-if="question.type === 'multiple_choice'" class="grid gap-3 sm:gap-4">
             <Button
               v-for="(option, index) in question.options"
               :key="index"
@@ -91,13 +96,17 @@
               :variant="answers[question.id] === option ? 'default' : 'outline'"
               :disabled="hasAnsweredCurrentQuestion"
               :class="[
-                'h-auto justify-start p-4 text-left whitespace-normal transition-all duration-300',
-                hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : 'cursor-pointer',
+                'h-auto min-h-[48px] touch-manipulation justify-start p-3 text-left whitespace-normal transition-all duration-300 sm:p-4',
+                hasAnsweredCurrentQuestion
+                  ? 'cursor-not-allowed'
+                  : 'cursor-pointer hover:shadow-md active:scale-[0.98]',
                 getButtonFeedbackClass(option, question, feedbackState),
               ]"
             >
-              <span class="mr-3 font-medium">{{ String.fromCharCode(65 + index) }}.</span>
-              {{ option }}
+              <span class="mr-2 flex-shrink-0 text-sm font-medium sm:mr-3 sm:text-base">
+                {{ String.fromCharCode(65 + index) }}.
+              </span>
+              <span class="text-sm sm:text-base">{{ option }}</span>
             </Button>
           </div>
         </div>

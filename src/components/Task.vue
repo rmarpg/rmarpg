@@ -1,17 +1,17 @@
 <template>
-  <div class="mx-auto mt-8 max-w-7xl">
+  <div class="mx-auto mt-4 max-w-7xl px-3 sm:mt-8 sm:px-4 lg:px-6">
     <!-- Header with Task Info -->
-    <div class="mb-6 rounded-lg bg-white p-4 shadow-sm">
-      <div class="flex items-center justify-between">
+    <div class="mb-4 rounded-lg bg-white p-3 shadow-sm sm:mb-6 sm:p-4 lg:p-6">
+      <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">{{ task.name }}</h1>
+          <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">{{ task.name }}</h1>
           <p class="text-sm text-gray-600">Task {{ task.id }} • {{ task.points }} points</p>
         </div>
-        <div class="flex items-center space-x-4">
+        <div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
           <!-- Timer -->
           <div class="flex items-center space-x-2 rounded-lg bg-orange-100 px-3 py-2">
             <svg
-              class="h-5 w-5 text-orange-600"
+              class="h-4 w-4 text-orange-600 sm:h-5 sm:w-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -23,7 +23,9 @@
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               ></path>
             </svg>
-            <span class="font-mono font-medium text-orange-600">{{ formatTime(timeLeft) }}</span>
+            <span class="font-mono text-sm font-medium text-orange-600 sm:text-base">{{
+              formatTime(timeLeft)
+            }}</span>
           </div>
           <!-- Progress -->
           <div class="text-sm text-gray-600">
@@ -41,28 +43,28 @@
     </div>
 
     <!-- Main Content -->
-    <div class="rounded-lg bg-white p-8 shadow-lg">
+    <div class="rounded-lg bg-white p-4 shadow-lg sm:p-6 lg:p-8">
       <!-- Featured Number Display (if provided) -->
-      <div v-if="featuredNumber" class="mb-8 text-center">
+      <div v-if="featuredNumber" class="mb-6 text-center sm:mb-8">
         <div
-          class="inline-block rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-8 py-4 text-white shadow-lg"
+          class="inline-block rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3 text-white shadow-lg sm:px-8 sm:py-4"
         >
-          <span class="text-4xl font-bold">{{ featuredNumber }}</span>
+          <span class="text-2xl font-bold sm:text-3xl lg:text-4xl">{{ featuredNumber }}</span>
         </div>
         <p class="mt-2 text-gray-600">Featured Number</p>
       </div>
 
       <!-- Question Content -->
-      <div class="space-y-6">
+      <div class="space-y-4 sm:space-y-6">
         <div>
-          <div class="mb-4 flex items-center space-x-3">
+          <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
             <h2 class="text-lg font-semibold text-gray-900">
               Question {{ currentQuestionIndex + 1 }}
             </h2>
             <!-- Speaker Button -->
             <button
               @click="speakQuestion"
-              class="rounded-full bg-blue-100 p-2 text-blue-600 transition-colors duration-200 hover:bg-blue-200"
+              class="self-start rounded-full bg-blue-100 p-2 text-blue-600 transition-colors duration-200 hover:bg-blue-200"
               :disabled="isSpeaking"
               :class="{ 'animate-pulse bg-blue-200': isSpeaking }"
             >
@@ -77,7 +79,7 @@
             </button>
           </div>
           <div
-            class="text-lg leading-relaxed text-gray-700"
+            class="text-base leading-relaxed text-gray-700 sm:text-lg"
             v-html="formatPrompt(currentQuestion.prompt)"
           ></div>
         </div>
@@ -87,12 +89,12 @@
           <img
             :src="`/${currentQuestion.media.file}`"
             :alt="`Question ${currentQuestion.id} illustration`"
-            class="max-w-md"
+            class="h-auto max-w-sm sm:max-w-md"
           />
         </div>
 
         <!-- Answer Input Slot -->
-        <div class="mt-8">
+        <div class="mt-6 sm:mt-8">
           <slot
             :question="currentQuestion"
             :onAnswer="handleAnswer"

@@ -99,255 +99,449 @@ watch(selectedGrade, async () => {
 
 <template>
   <DashboardLayout>
-    <header class="flex items-end gap-3">
-      <h2 class="text-2xl font-semibold text-neutral-800">Grade {{ selectedGradeNumber }}</h2>
-      <Select v-model="selectedGrade">
-        <SelectTrigger>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="grade_1">Grade 1</SelectItem>
-          <SelectItem value="grade_2">Grade 2</SelectItem>
-          <SelectItem value="grade_3">Grade 3</SelectItem>
-          <SelectItem value="grade_4">Grade 4</SelectItem>
-          <SelectItem value="grade_5">Grade 5</SelectItem>
-          <SelectItem value="grade_6">Grade 6</SelectItem>
-        </SelectContent>
-      </Select>
-    </header>
+    <div class="space-y-4 sm:space-y-6">
+      <!-- Header Section -->
+      <header class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <h2 class="text-xl font-semibold text-neutral-800 sm:text-2xl">
+          Grade {{ selectedGradeNumber }}
+        </h2>
+        <Select v-model="selectedGrade" class="w-full sm:w-auto">
+          <SelectTrigger class="min-w-[140px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="grade_1">Grade 1</SelectItem>
+            <SelectItem value="grade_2">Grade 2</SelectItem>
+            <SelectItem value="grade_3">Grade 3</SelectItem>
+            <SelectItem value="grade_4">Grade 4</SelectItem>
+            <SelectItem value="grade_5">Grade 5</SelectItem>
+            <SelectItem value="grade_6">Grade 6</SelectItem>
+          </SelectContent>
+        </Select>
+      </header>
 
-    <div class="mt-6 overflow-x-auto">
-      <div v-if="assessmentLoading" class="py-8 text-center">
-        <p class="text-gray-600">Loading assessments...</p>
+      <!-- Table Section -->
+      <div class="rounded-lg border bg-white shadow-sm">
+        <div v-if="assessmentLoading" class="py-12 text-center">
+          <p class="text-gray-600">Loading assessments...</p>
+        </div>
+
+        <div v-else-if="assessments.length === 0" class="py-12 text-center">
+          <p class="text-gray-600">No assessments found for Grade {{ selectedGradeNumber }}</p>
+        </div>
+
+        <div v-else class="overflow-x-auto">
+          <!-- Mobile Card View (hidden on md and up) -->
+          <div class="block space-y-4 p-4 md:hidden">
+            <div
+              v-for="(assessment, index) in assessments"
+              :key="assessment.id"
+              class="space-y-3 rounded-lg bg-gray-50 p-4"
+            >
+              <div class="flex items-start justify-between">
+                <div>
+                  <h3 class="font-semibold text-gray-900">{{ getLearnerName(assessment) }}</h3>
+                  <p class="text-sm text-gray-600">S/N: {{ index + 1 }}</p>
+                  <p class="text-sm text-gray-600">Grade {{ assessment.grade_level }}</p>
+                  <p class="text-sm text-gray-600">{{ formatDate(assessment.assessment_date) }}</p>
+                </div>
+                <div class="text-right">
+                  <div
+                    class="text-lg font-bold"
+                    :class="{
+                      'text-blue-600': assessment.overall_score >= 75,
+                      'text-orange-600':
+                        assessment.overall_score >= 50 && assessment.overall_score < 75,
+                      'text-red-600': assessment.overall_score < 50,
+                    }"
+                  >
+                    {{ assessment.overall_score }}%
+                  </div>
+                  <div class="text-sm text-gray-600">Total: {{ assessment.total_score }}</div>
+                </div>
+              </div>
+
+              <!-- Task Scores Grid -->
+              <div class="grid grid-cols-3 gap-2 border-t pt-2 sm:grid-cols-4">
+                <div class="text-center">
+                  <div class="mb-1 text-xs text-gray-500">A</div>
+                  <div
+                    class="text-sm font-medium"
+                    :class="{
+                      'text-green-600': assessment.task_a_score > 0,
+                      'text-gray-400': assessment.task_a_score === 0,
+                    }"
+                  >
+                    {{ assessment.task_a_score }}
+                  </div>
+                </div>
+                <div class="text-center">
+                  <div class="mb-1 text-xs text-gray-500">B</div>
+                  <div
+                    class="text-sm font-medium"
+                    :class="{
+                      'text-green-600': assessment.task_b_score > 0,
+                      'text-gray-400': assessment.task_b_score === 0,
+                    }"
+                  >
+                    {{ assessment.task_b_score }}
+                  </div>
+                </div>
+                <div class="text-center">
+                  <div class="mb-1 text-xs text-gray-500">C</div>
+                  <div
+                    class="text-sm font-medium"
+                    :class="{
+                      'text-green-600': assessment.task_c_score > 0,
+                      'text-gray-400': assessment.task_c_score === 0,
+                    }"
+                  >
+                    {{ assessment.task_c_score }}
+                  </div>
+                </div>
+                <div class="text-center">
+                  <div class="mb-1 text-xs text-gray-500">D</div>
+                  <div
+                    class="text-sm font-medium"
+                    :class="{
+                      'text-green-600': assessment.task_d_score > 0,
+                      'text-gray-400': assessment.task_d_score === 0,
+                    }"
+                  >
+                    {{ assessment.task_d_score }}
+                  </div>
+                </div>
+                <div class="text-center">
+                  <div class="mb-1 text-xs text-gray-500">E</div>
+                  <div
+                    class="text-sm font-medium"
+                    :class="{
+                      'text-green-600': assessment.task_e_score > 0,
+                      'text-gray-400': assessment.task_e_score === 0,
+                    }"
+                  >
+                    {{ assessment.task_e_score }}
+                  </div>
+                </div>
+                <div class="text-center">
+                  <div class="mb-1 text-xs text-gray-500">F</div>
+                  <div
+                    class="text-sm font-medium"
+                    :class="{
+                      'text-green-600': assessment.task_f_score > 0,
+                      'text-gray-400': assessment.task_f_score === 0,
+                    }"
+                  >
+                    {{ assessment.task_f_score }}
+                  </div>
+                </div>
+                <div class="text-center">
+                  <div class="mb-1 text-xs text-gray-500">G</div>
+                  <div
+                    class="text-sm font-medium"
+                    :class="{
+                      'text-green-600': assessment.task_g_score > 0,
+                      'text-gray-400': assessment.task_g_score === 0,
+                    }"
+                  >
+                    {{ assessment.task_g_score }}
+                  </div>
+                </div>
+                <div class="text-center">
+                  <div class="mb-1 text-xs text-gray-500">H</div>
+                  <div
+                    class="text-sm font-medium"
+                    :class="{
+                      'text-green-600': assessment.task_h_score > 0,
+                      'text-gray-400': assessment.task_h_score === 0,
+                    }"
+                  >
+                    {{ assessment.task_h_score }}
+                  </div>
+                </div>
+                <div class="text-center">
+                  <div class="mb-1 text-xs text-gray-500">I</div>
+                  <div
+                    class="text-sm font-medium"
+                    :class="{
+                      'text-green-600': assessment.task_i_score > 0,
+                      'text-gray-400': assessment.task_i_score === 0,
+                    }"
+                  >
+                    {{ assessment.task_i_score }}
+                  </div>
+                </div>
+                <div class="text-center">
+                  <div class="mb-1 text-xs text-gray-500">J</div>
+                  <div
+                    class="text-sm font-medium"
+                    :class="{
+                      'text-green-600': assessment.task_j_score > 0,
+                      'text-gray-400': assessment.task_j_score === 0,
+                    }"
+                  >
+                    {{ assessment.task_j_score }}
+                  </div>
+                </div>
+                <div class="text-center">
+                  <div class="mb-1 text-xs text-gray-500">K</div>
+                  <div
+                    class="text-sm font-medium"
+                    :class="{
+                      'text-green-600': assessment.task_k_score > 0,
+                      'text-gray-400': assessment.task_k_score === 0,
+                    }"
+                  >
+                    {{ assessment.task_k_score }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Desktop Table View (hidden below md) -->
+          <table class="hidden w-full min-w-full border-collapse md:table">
+            <thead class="bg-blue-600">
+              <tr>
+                <th
+                  class="border border-gray-300 px-2 py-2 text-left text-xs font-semibold text-white lg:px-3 lg:text-sm"
+                >
+                  S/N
+                </th>
+                <th
+                  class="border border-gray-300 px-2 py-2 text-left text-xs font-semibold text-white lg:px-3 lg:text-sm"
+                >
+                  Learner ID
+                </th>
+                <th
+                  class="border border-gray-300 px-2 py-2 text-left text-xs font-semibold text-white lg:px-3 lg:text-sm"
+                >
+                  Name of Learner
+                </th>
+                <th
+                  class="border border-gray-300 px-2 py-2 text-left text-xs font-semibold text-white lg:px-3 lg:text-sm"
+                >
+                  Grade Level
+                </th>
+                <th
+                  class="border border-gray-300 px-2 py-2 text-left text-xs font-semibold text-white lg:px-3 lg:text-sm"
+                >
+                  Section
+                </th>
+                <th
+                  class="border border-gray-300 px-2 py-2 text-left text-xs font-semibold text-white lg:px-3 lg:text-sm"
+                >
+                  Date of Assessment
+                </th>
+                <th
+                  class="border border-gray-300 px-1 py-2 text-center text-xs font-semibold text-white lg:px-2 lg:text-sm"
+                >
+                  Task A
+                </th>
+                <th
+                  class="border border-gray-300 px-1 py-2 text-center text-xs font-semibold text-white lg:px-2 lg:text-sm"
+                >
+                  Task B
+                </th>
+                <th
+                  class="border border-gray-300 px-1 py-2 text-center text-xs font-semibold text-white lg:px-2 lg:text-sm"
+                >
+                  Task C
+                </th>
+                <th
+                  class="border border-gray-300 px-1 py-2 text-center text-xs font-semibold text-white lg:px-2 lg:text-sm"
+                >
+                  Task D
+                </th>
+                <th
+                  class="border border-gray-300 px-1 py-2 text-center text-xs font-semibold text-white lg:px-2 lg:text-sm"
+                >
+                  Task E
+                </th>
+                <th
+                  class="border border-gray-300 px-1 py-2 text-center text-xs font-semibold text-white lg:px-2 lg:text-sm"
+                >
+                  Task F
+                </th>
+                <th
+                  class="border border-gray-300 px-1 py-2 text-center text-xs font-semibold text-white lg:px-2 lg:text-sm"
+                >
+                  Task G
+                </th>
+                <th
+                  class="border border-gray-300 px-1 py-2 text-center text-xs font-semibold text-white lg:px-2 lg:text-sm"
+                >
+                  Task H
+                </th>
+                <th
+                  class="border border-gray-300 px-1 py-2 text-center text-xs font-semibold text-white lg:px-2 lg:text-sm"
+                >
+                  Task I
+                </th>
+                <th
+                  class="border border-gray-300 px-1 py-2 text-center text-xs font-semibold text-white lg:px-2 lg:text-sm"
+                >
+                  Task J
+                </th>
+                <th
+                  class="border border-gray-300 px-1 py-2 text-center text-xs font-semibold text-white lg:px-2 lg:text-sm"
+                >
+                  Task K
+                </th>
+                <th
+                  class="border border-gray-300 px-2 py-2 text-center text-xs font-semibold text-white lg:px-3 lg:text-sm"
+                >
+                  Overall Score
+                </th>
+                <th
+                  class="border border-gray-300 px-2 py-2 text-center text-xs font-semibold text-white lg:px-3 lg:text-sm"
+                >
+                  Total Score
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(assessment, index) in assessments"
+                :key="assessment.id"
+                class="hover:bg-gray-50"
+              >
+                <td class="border border-gray-300 px-2 py-3 text-xs lg:px-3 lg:text-sm">
+                  {{ index + 1 }}
+                </td>
+                <td class="border border-gray-300 px-2 py-3 font-mono text-xs lg:px-3"></td>
+                <td class="border border-gray-300 px-2 py-3 text-xs lg:px-3 lg:text-sm">
+                  {{ getLearnerName(assessment) }}
+                </td>
+                <td class="border border-gray-300 px-2 py-3 text-center text-xs lg:px-3 lg:text-sm">
+                  {{ assessment.grade_level }}
+                </td>
+                <td
+                  class="border border-gray-300 px-2 py-3 text-center text-xs lg:px-3 lg:text-sm"
+                ></td>
+                <td class="border border-gray-300 px-2 py-3 text-xs lg:px-3 lg:text-sm">
+                  {{ formatDate(assessment.assessment_date) }}
+                </td>
+                <td
+                  class="border border-gray-300 px-1 py-3 text-center text-xs font-medium lg:px-2 lg:text-sm"
+                  :class="{
+                    'text-green-600': assessment.task_a_score > 0,
+                    'text-gray-400': assessment.task_a_score === 0,
+                  }"
+                >
+                  {{ assessment.task_a_score }}
+                </td>
+                <td
+                  class="border border-gray-300 px-1 py-3 text-center text-xs font-medium lg:px-2 lg:text-sm"
+                  :class="{
+                    'text-green-600': assessment.task_b_score > 0,
+                    'text-gray-400': assessment.task_b_score === 0,
+                  }"
+                >
+                  {{ assessment.task_b_score }}
+                </td>
+                <td
+                  class="border border-gray-300 px-1 py-3 text-center text-xs font-medium lg:px-2 lg:text-sm"
+                  :class="{
+                    'text-green-600': assessment.task_c_score > 0,
+                    'text-gray-400': assessment.task_c_score === 0,
+                  }"
+                >
+                  {{ assessment.task_c_score }}
+                </td>
+                <td
+                  class="border border-gray-300 px-1 py-3 text-center text-xs font-medium lg:px-2 lg:text-sm"
+                  :class="{
+                    'text-green-600': assessment.task_d_score > 0,
+                    'text-gray-400': assessment.task_d_score === 0,
+                  }"
+                >
+                  {{ assessment.task_d_score }}
+                </td>
+                <td
+                  class="border border-gray-300 px-1 py-3 text-center text-xs font-medium lg:px-2 lg:text-sm"
+                  :class="{
+                    'text-green-600': assessment.task_e_score > 0,
+                    'text-gray-400': assessment.task_e_score === 0,
+                  }"
+                >
+                  {{ assessment.task_e_score }}
+                </td>
+                <td
+                  class="border border-gray-300 px-1 py-3 text-center text-xs font-medium lg:px-2 lg:text-sm"
+                  :class="{
+                    'text-green-600': assessment.task_f_score > 0,
+                    'text-gray-400': assessment.task_f_score === 0,
+                  }"
+                >
+                  {{ assessment.task_f_score }}
+                </td>
+                <td
+                  class="border border-gray-300 px-1 py-3 text-center text-xs font-medium lg:px-2 lg:text-sm"
+                  :class="{
+                    'text-green-600': assessment.task_g_score > 0,
+                    'text-gray-400': assessment.task_g_score === 0,
+                  }"
+                >
+                  {{ assessment.task_g_score }}
+                </td>
+                <td
+                  class="border border-gray-300 px-1 py-3 text-center text-xs font-medium lg:px-2 lg:text-sm"
+                  :class="{
+                    'text-green-600': assessment.task_h_score > 0,
+                    'text-gray-400': assessment.task_h_score === 0,
+                  }"
+                >
+                  {{ assessment.task_h_score }}
+                </td>
+                <td
+                  class="border border-gray-300 px-1 py-3 text-center text-xs font-medium lg:px-2 lg:text-sm"
+                  :class="{
+                    'text-green-600': assessment.task_i_score > 0,
+                    'text-gray-400': assessment.task_i_score === 0,
+                  }"
+                >
+                  {{ assessment.task_i_score }}
+                </td>
+                <td
+                  class="border border-gray-300 px-1 py-3 text-center text-xs font-medium lg:px-2 lg:text-sm"
+                  :class="{
+                    'text-green-600': assessment.task_j_score > 0,
+                    'text-gray-400': assessment.task_j_score === 0,
+                  }"
+                >
+                  {{ assessment.task_j_score }}
+                </td>
+                <td
+                  class="border border-gray-300 px-1 py-3 text-center text-xs font-medium lg:px-2 lg:text-sm"
+                  :class="{
+                    'text-green-600': assessment.task_k_score > 0,
+                    'text-gray-400': assessment.task_k_score === 0,
+                  }"
+                >
+                  {{ assessment.task_k_score }}
+                </td>
+                <td
+                  class="border border-gray-300 px-2 py-3 text-center text-xs font-bold lg:px-3 lg:text-sm"
+                  :class="{
+                    'text-blue-600': assessment.overall_score >= 75,
+                    'text-orange-600':
+                      assessment.overall_score >= 50 && assessment.overall_score < 75,
+                    'text-red-600': assessment.overall_score < 50,
+                  }"
+                >
+                  {{ assessment.overall_score }}%
+                </td>
+                <td
+                  class="border border-gray-300 px-2 py-3 text-center text-xs font-bold text-gray-700 lg:px-3 lg:text-sm"
+                >
+                  {{ assessment.total_score }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-
-      <div v-else-if="assessments.length === 0" class="py-8 text-center">
-        <p class="text-gray-600">No assessments found for Grade {{ selectedGradeNumber }}</p>
-      </div>
-
-      <table v-else class="w-full min-w-max border-collapse">
-        <thead class="bg-blue-600">
-          <tr>
-            <th class="border border-gray-300 px-3 py-2 text-left text-sm font-semibold text-white">
-              S/N
-            </th>
-            <th class="border border-gray-300 px-3 py-2 text-left text-sm font-semibold text-white">
-              Learner ID
-            </th>
-            <th class="border border-gray-300 px-3 py-2 text-left text-sm font-semibold text-white">
-              Name of Learner
-            </th>
-            <th class="border border-gray-300 px-3 py-2 text-left text-sm font-semibold text-white">
-              Grade Level
-            </th>
-            <th class="border border-gray-300 px-3 py-2 text-left text-sm font-semibold text-white">
-              Section
-            </th>
-            <th class="border border-gray-300 px-3 py-2 text-left text-sm font-semibold text-white">
-              Date of Assessment
-            </th>
-            <th
-              class="border border-gray-300 px-2 py-2 text-center text-sm font-semibold text-white"
-            >
-              Task A
-            </th>
-            <th
-              class="border border-gray-300 px-2 py-2 text-center text-sm font-semibold text-white"
-            >
-              Task B
-            </th>
-            <th
-              class="border border-gray-300 px-2 py-2 text-center text-sm font-semibold text-white"
-            >
-              Task C
-            </th>
-            <th
-              class="border border-gray-300 px-2 py-2 text-center text-sm font-semibold text-white"
-            >
-              Task D
-            </th>
-            <th
-              class="border border-gray-300 px-2 py-2 text-center text-sm font-semibold text-white"
-            >
-              Task E
-            </th>
-            <th
-              class="border border-gray-300 px-2 py-2 text-center text-sm font-semibold text-white"
-            >
-              Task F
-            </th>
-            <th
-              class="border border-gray-300 px-2 py-2 text-center text-sm font-semibold text-white"
-            >
-              Task G
-            </th>
-            <th
-              class="border border-gray-300 px-2 py-2 text-center text-sm font-semibold text-white"
-            >
-              Task H
-            </th>
-            <th
-              class="border border-gray-300 px-2 py-2 text-center text-sm font-semibold text-white"
-            >
-              Task I
-            </th>
-            <th
-              class="border border-gray-300 px-2 py-2 text-center text-sm font-semibold text-white"
-            >
-              Task J
-            </th>
-            <th
-              class="border border-gray-300 px-2 py-2 text-center text-sm font-semibold text-white"
-            >
-              Task K
-            </th>
-            <th
-              class="border border-gray-300 px-3 py-2 text-center text-sm font-semibold text-white"
-            >
-              Overall Score
-            </th>
-            <th
-              class="border border-gray-300 px-3 py-2 text-center text-sm font-semibold text-white"
-            >
-              Total Score
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="(assessment, index) in assessments"
-            :key="assessment.id"
-            class="hover:bg-gray-50"
-          >
-            <td class="border border-gray-300 px-3 py-3 text-sm">{{ index + 1 }}</td>
-            <td class="border border-gray-300 px-3 py-3 font-mono text-xs"></td>
-            <td class="border border-gray-300 px-3 py-3 text-sm">
-              {{ getLearnerName(assessment) }}
-            </td>
-            <td class="border border-gray-300 px-3 py-3 text-center text-sm">
-              {{ assessment.grade_level }}
-            </td>
-            <td class="border border-gray-300 px-3 py-3 text-center text-sm"></td>
-            <td class="border border-gray-300 px-3 py-3 text-sm">
-              {{ formatDate(assessment.assessment_date) }}
-            </td>
-            <td
-              class="border border-gray-300 px-2 py-3 text-center text-sm font-medium"
-              :class="{
-                'text-green-600': assessment.task_a_score > 0,
-                'text-gray-400': assessment.task_a_score === 0,
-              }"
-            >
-              {{ assessment.task_a_score }}
-            </td>
-            <td
-              class="border border-gray-300 px-2 py-3 text-center text-sm font-medium"
-              :class="{
-                'text-green-600': assessment.task_b_score > 0,
-                'text-gray-400': assessment.task_b_score === 0,
-              }"
-            >
-              {{ assessment.task_b_score }}
-            </td>
-            <td
-              class="border border-gray-300 px-2 py-3 text-center text-sm font-medium"
-              :class="{
-                'text-green-600': assessment.task_c_score > 0,
-                'text-gray-400': assessment.task_c_score === 0,
-              }"
-            >
-              {{ assessment.task_c_score }}
-            </td>
-            <td
-              class="border border-gray-300 px-2 py-3 text-center text-sm font-medium"
-              :class="{
-                'text-green-600': assessment.task_d_score > 0,
-                'text-gray-400': assessment.task_d_score === 0,
-              }"
-            >
-              {{ assessment.task_d_score }}
-            </td>
-            <td
-              class="border border-gray-300 px-2 py-3 text-center text-sm font-medium"
-              :class="{
-                'text-green-600': assessment.task_e_score > 0,
-                'text-gray-400': assessment.task_e_score === 0,
-              }"
-            >
-              {{ assessment.task_e_score }}
-            </td>
-            <td
-              class="border border-gray-300 px-2 py-3 text-center text-sm font-medium"
-              :class="{
-                'text-green-600': assessment.task_f_score > 0,
-                'text-gray-400': assessment.task_f_score === 0,
-              }"
-            >
-              {{ assessment.task_f_score }}
-            </td>
-            <td
-              class="border border-gray-300 px-2 py-3 text-center text-sm font-medium"
-              :class="{
-                'text-green-600': assessment.task_g_score > 0,
-                'text-gray-400': assessment.task_g_score === 0,
-              }"
-            >
-              {{ assessment.task_g_score }}
-            </td>
-            <td
-              class="border border-gray-300 px-2 py-3 text-center text-sm font-medium"
-              :class="{
-                'text-green-600': assessment.task_h_score > 0,
-                'text-gray-400': assessment.task_h_score === 0,
-              }"
-            >
-              {{ assessment.task_h_score }}
-            </td>
-            <td
-              class="border border-gray-300 px-2 py-3 text-center text-sm font-medium"
-              :class="{
-                'text-green-600': assessment.task_i_score > 0,
-                'text-gray-400': assessment.task_i_score === 0,
-              }"
-            >
-              {{ assessment.task_i_score }}
-            </td>
-            <td
-              class="border border-gray-300 px-2 py-3 text-center text-sm font-medium"
-              :class="{
-                'text-green-600': assessment.task_j_score > 0,
-                'text-gray-400': assessment.task_j_score === 0,
-              }"
-            >
-              {{ assessment.task_j_score }}
-            </td>
-            <td
-              class="border border-gray-300 px-2 py-3 text-center text-sm font-medium"
-              :class="{
-                'text-green-600': assessment.task_k_score > 0,
-                'text-gray-400': assessment.task_k_score === 0,
-              }"
-            >
-              {{ assessment.task_k_score }}
-            </td>
-            <td
-              class="border border-gray-300 px-3 py-3 text-center text-sm font-bold"
-              :class="{
-                'text-blue-600': assessment.overall_score >= 75,
-                'text-orange-600': assessment.overall_score >= 50 && assessment.overall_score < 75,
-                'text-red-600': assessment.overall_score < 50,
-              }"
-            >
-              {{ assessment.overall_score }}%
-            </td>
-            <td
-              class="border border-gray-300 px-3 py-3 text-center text-sm font-bold text-gray-700"
-            >
-              {{ assessment.total_score }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
     </div>
   </DashboardLayout>
 </template>

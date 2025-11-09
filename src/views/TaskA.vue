@@ -15,7 +15,7 @@
           <label class="block text-sm font-medium text-gray-700"> Choose your answer: </label>
 
           <!-- Multiple Choice Options -->
-          <div v-if="question.type === 'multiple_choice'" class="grid gap-3">
+          <div v-if="question.type === 'multiple_choice'" class="grid gap-3 sm:gap-4">
             <Button
               v-for="(option, index) in question.options"
               :key="index"
@@ -23,13 +23,17 @@
               :variant="currentAnswer === option ? 'default' : 'outline'"
               :disabled="hasAnsweredCurrentQuestion"
               :class="[
-                'h-auto justify-start p-4 text-left whitespace-normal transition-all duration-300',
-                hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : 'cursor-pointer',
+                'h-auto min-h-[48px] touch-manipulation justify-start p-3 text-left whitespace-normal transition-all duration-300 sm:p-4',
+                hasAnsweredCurrentQuestion
+                  ? 'cursor-not-allowed'
+                  : 'cursor-pointer hover:shadow-md active:scale-[0.98]',
                 getButtonFeedbackClass(option, question, feedbackState),
               ]"
             >
-              <span class="mr-3 font-medium">{{ String.fromCharCode(65 + index) }}.</span>
-              {{ option }}
+              <span class="mr-2 flex-shrink-0 text-sm font-medium sm:mr-3 sm:text-base">
+                {{ String.fromCharCode(65 + index) }}.
+              </span>
+              <span class="text-sm sm:text-base">{{ option }}</span>
             </Button>
           </div>
         </div>

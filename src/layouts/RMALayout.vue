@@ -12,17 +12,17 @@ const { user, logout } = useAuth()
 </script>
 
 <template>
-  <div class="min-h-screen bg-blue-800 p-4 sm:p-8">
+  <div class="min-h-screen bg-blue-800 p-3 sm:p-4 lg:p-8">
     <div>
-      <header class="flex items-end justify-between">
-        <img src="/logo.png" class="h-20 w-auto" />
+      <header class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+        <img src="/logo.png" class="h-16 w-auto sm:h-20" />
 
-        <div v-if="user">
+        <div v-if="user" class="w-full sm:w-auto">
           <DropdownMenu>
             <DropdownMenuTrigger
-              :class="'flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-white transition-colors duration-200 hover:bg-white/10'"
+              :class="'flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-3 py-1.5 text-sm text-white transition-colors duration-200 hover:bg-white/10 sm:w-auto sm:justify-start sm:text-base'"
             >
-              {{ user.email }}
+              <span class="max-w-[200px] truncate sm:max-w-none">{{ user.email }}</span>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
@@ -33,7 +33,7 @@ const { user, logout } = useAuth()
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                class="size-4"
+                class="size-4 flex-shrink-0"
               >
                 <path d="m6 9 6 6 6-6" />
               </svg>
