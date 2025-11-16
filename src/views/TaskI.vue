@@ -73,7 +73,11 @@
           <div class="flex justify-center">
             <Button
               @click="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
-              :disabled="!answers[question.id] || hasAnsweredCurrentQuestion"
+              :disabled="
+                answers[question.id] === '' ||
+                answers[question.id] == null ||
+                hasAnsweredCurrentQuestion
+              "
               :class="[
                 'px-8 py-3 text-lg transition-all duration-300',
                 hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '',
@@ -178,7 +182,10 @@ const formatMathExpression = (prompt: string) => {
     // Extract the math part from prompts like "4 x 1 = ?" or "__ x 9 = 0"
     const mathPart = prompt.match(/([\d_]+\s*[x×]\s*[\d_]+\s*=\s*[\d?_]+)/)?.[0]
     if (mathPart) {
-      const latexExpr = mathPart.replace(/x|×/g, '\\times').replace(/__/g, '\\phantom{0}')
+      const latexExpr = mathPart
+        .replace(/x|×/g, '\\times')
+        .replace(/__/g, '\\_\\phantom{00}') // Show underscore with phantom space
+        .replace(/\?/g, '\\phantom{00}')
       return katex.renderToString(latexExpr, {
         displayMode: false,
         throwOnError: false,
