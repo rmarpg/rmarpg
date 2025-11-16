@@ -57,7 +57,6 @@
               <span v-html="formatMathExpression(question.prompt)"></span>
               <input
                 v-model="answers[question.id]"
-                @input="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
                 type="number"
                 :disabled="hasAnsweredCurrentQuestion"
                 :class="[

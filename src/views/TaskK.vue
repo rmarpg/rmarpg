@@ -15,51 +15,33 @@
           <img src="/task-k.png" alt="Task K Featured Image" class="max-w-lg rounded-lg" />
         </div>
 
-        <!-- K1 - Special input functionality with + buttons (limited to 4) -->
+        <!-- K1 - Name shapes in the pattern (any combination allowed) -->
         <div v-if="question.id === 'K1'" class="space-y-6">
           <div class="text-center text-lg font-medium text-gray-700">
             {{ question.prompt }}
           </div>
+          <div class="text-center text-sm text-gray-500">Enter any shapes you see.</div>
 
           <div class="space-y-4">
             <div class="flex flex-col items-center space-y-3">
-              <!-- Dynamic input fields with + buttons -->
+              <!-- Fixed 4 input fields for shape names -->
               <div
                 v-for="(input, index) in k1Inputs"
                 :key="index"
                 class="flex items-center space-x-2"
               >
+                <label class="w-16 text-sm font-medium text-gray-600">Shape {{ index + 1 }}:</label>
                 <input
                   v-model="input.value"
-                  @input="!hasAnsweredCurrentQuestion && updateK1Answer"
+                  @input="updateK1Answer"
                   type="text"
                   :disabled="hasAnsweredCurrentQuestion"
-                  :placeholder="`Shape ${index + 1}`"
+                  :placeholder="`Enter shape name`"
                   :class="[
                     'h-10 w-48 rounded border-2 border-gray-300 px-3 text-center focus:border-blue-500 focus:outline-none',
                     hasAnsweredCurrentQuestion ? 'cursor-not-allowed opacity-75' : '',
                   ]"
                 />
-                <Button
-                  v-if="index === k1Inputs.length - 1 && k1Inputs.length < 4"
-                  @click="!hasAnsweredCurrentQuestion && addK1Input"
-                  :disabled="hasAnsweredCurrentQuestion"
-                  variant="outline"
-                  size="sm"
-                  class="h-10 w-10 p-0"
-                >
-                  +
-                </Button>
-                <Button
-                  v-if="k1Inputs.length > 1"
-                  @click="!hasAnsweredCurrentQuestion && removeK1Input(index)"
-                  :disabled="hasAnsweredCurrentQuestion"
-                  variant="outline"
-                  size="sm"
-                  class="h-10 w-10 p-0 text-red-500 hover:text-red-700"
-                >
-                  −
-                </Button>
               </div>
             </div>
 
@@ -69,6 +51,7 @@
                 :disabled="!hasValidK1Answer || hasAnsweredCurrentQuestion"
                 :class="[
                   'px-8 py-3 text-lg',
+                  !hasValidK1Answer ? 'cursor-not-allowed opacity-50' : '',
                   hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '',
                 ]"
               >
@@ -345,7 +328,6 @@
           <div v-else class="flex items-center justify-center space-x-4">
             <input
               v-model="answers[question.id]"
-              @input="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
               type="text"
               :disabled="hasAnsweredCurrentQuestion"
               :class="[
@@ -385,20 +367,13 @@ const answers = ref<Record<string, string>>({
   K4: '',
 })
 
-// Special K1 input management (limit to 4 inputs)
-const k1Inputs = ref([{ value: '' }])
+// Special K1 input management (4 fixed inputs for shape names - any combination allowed)
+const k1Inputs = ref([{ value: '' }, { value: '' }, { value: '' }])
 
 const router = useRouter()
 const { user, loading: authLoading } = useAuth()
 const { getOrCreateAssessment, updateTaskScore, calculateTaskScore, currentAssessment } =
   useAssessment()
-
-// K1 input management functions
-const addK1Input = () => {
-  if (k1Inputs.value.length < 4) {
-    k1Inputs.value.push({ value: '' })
-  }
-}
 
 // K2 Drag and Drop System
 interface Shape {
@@ -591,13 +566,6 @@ const submitK4Answer = (onAnswer: (answer: string) => void) => {
   }
 }
 
-const removeK1Input = (index: number) => {
-  if (k1Inputs.value.length > 1) {
-    k1Inputs.value.splice(index, 1)
-    updateK1Answer()
-  }
-}
-
 const updateK1Answer = () => {
   const values = k1Inputs.value.map((input) => input.value.trim()).filter((v) => v !== '')
   answers.value['K1'] = values.join(', ')
@@ -645,13 +613,13 @@ const taskData = computed(() => {
         id: 'K1',
         prompt: 'Name the shapes in the pattern.',
         type: 'short_answer',
-        answer: 'circle, half-circle, semi-circle, square',
+        answer: 'circle, half-circle, square', // Normalized answer (half-circle and semi-circle treated as same)
       },
       {
         id: 'K2',
         prompt: 'Draw the missing shapes in the pattern (circle, half-circle, square, circle).',
         type: 'drawing',
-        answer: 'drawing_completed',
+        answer: 'circle, half-circle, square, circle',
       },
       {
         id: 'K3',

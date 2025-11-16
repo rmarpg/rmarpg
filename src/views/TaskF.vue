@@ -57,24 +57,42 @@ const { user, loading: authLoading } = useAuth()
 const { getOrCreateAssessment, updateTaskScore, calculateTaskScore, currentAssessment } =
   useAssessment()
 
+// Shuffle function to randomize multiple choice options
+const shuffleOptions = (options: string[], correctAnswer: string) => {
+  const shuffled = [...options]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
 // Get Task F data from the JSON and convert to multiple choice
 const taskData = computed(() => {
+  const baseQuestions = [
+    {
+      id: 'F1',
+      prompt:
+        'Grade 2 - Maya collected 128 bottles. Grade 2 – Agila collected 93 bottles. How many bottles were collected in all?',
+      type: 'multiple_choice',
+      answer: '221',
+      options: ['221', '211', '231', '201'],
+      media: { type: 'image', file: 'task-f.png' },
+    },
+  ]
+
+  // Randomize options for each question
+  const questionsWithShuffledOptions = baseQuestions.map((question) => ({
+    ...question,
+    options: shuffleOptions(question.options, question.answer),
+  }))
+
   return {
     id: 'F',
     name: 'Addition Word Problem',
     points: 1,
     time_limit_seconds: 60,
-    questions: [
-      {
-        id: 'F1',
-        prompt:
-          'Grade 2 - Maya collected 128 bottles. Grade 2 – Agila collected 93 bottles. How many bottles were collected in all?',
-        type: 'multiple_choice',
-        answer: '221',
-        options: ['221', '211', '231', '201'],
-        media: { type: 'image', file: 'task-f.png' },
-      },
-    ],
+    questions: questionsWithShuffledOptions,
   }
 })
 

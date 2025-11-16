@@ -58,30 +58,48 @@ const { user, loading: authLoading } = useAuth()
 const { getOrCreateAssessment, updateTaskScore, calculateTaskScore, currentAssessment } =
   useAssessment()
 
+// Shuffle function to randomize multiple choice options
+const shuffleOptions = (options: string[], correctAnswer: string) => {
+  const shuffled = [...options]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
 // Get Task D data from the JSON
 const taskData = computed(() => {
   // Task D from rma.json
+  const baseQuestions = [
+    {
+      id: 'D1a',
+      prompt: 'Fill in missing fraction between 1/10 and 1/7',
+      type: 'multiple_choice',
+      answer: '1/8',
+      options: ['1/8', '1/9', '1/6', '1/11'],
+    },
+    {
+      id: 'D1b',
+      prompt: 'Fill in missing fraction between 1/4 and 1/2',
+      type: 'multiple_choice',
+      answer: '1/3',
+      options: ['1/3', '2/5', '1/5', '2/7'],
+    },
+  ]
+
+  // Randomize options for each question
+  const questionsWithShuffledOptions = baseQuestions.map((question) => ({
+    ...question,
+    options: shuffleOptions(question.options, question.answer),
+  }))
+
   return {
     id: 'D',
     name: 'Missing Unit Fractions',
     points: 2,
     time_limit_seconds: 120,
-    questions: [
-      {
-        id: 'D1a',
-        prompt: 'Fill in missing fraction between 1/10 and 1/7',
-        type: 'multiple_choice',
-        answer: '1/8',
-        options: ['1/8', '1/9', '1/6', '1/11'],
-      },
-      {
-        id: 'D1b',
-        prompt: 'Fill in missing fraction between 1/4 and 1/2',
-        type: 'multiple_choice',
-        answer: '1/3',
-        options: ['1/3', '2/5', '1/5', '2/7'],
-      },
-    ],
+    questions: questionsWithShuffledOptions,
   }
 })
 

@@ -17,7 +17,6 @@
             <div class="flex items-center justify-center">
               <input
                 v-model="answers[question.id]"
-                @input="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
                 type="number"
                 :disabled="hasAnsweredCurrentQuestion"
                 :class="[
@@ -57,7 +56,6 @@
             <div class="flex items-center justify-center">
               <input
                 v-model="answers[question.id]"
-                @input="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
                 type="number"
                 :disabled="hasAnsweredCurrentQuestion"
                 :class="[
@@ -97,7 +95,6 @@
             <div class="flex items-center justify-center">
               <input
                 v-model="answers[question.id]"
-                @input="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
                 type="number"
                 :disabled="hasAnsweredCurrentQuestion"
                 :class="[

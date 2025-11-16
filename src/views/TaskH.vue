@@ -57,29 +57,47 @@ const { user, loading: authLoading } = useAuth()
 const { getOrCreateAssessment, updateTaskScore, calculateTaskScore, currentAssessment } =
   useAssessment()
 
+// Shuffle function to randomize multiple choice options
+const shuffleOptions = (options: string[], correctAnswer: string) => {
+  const shuffled = [...options]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
 // Get Task H data from the JSON and convert to multiple choice
 const taskData = computed(() => {
+  const baseQuestions = [
+    {
+      id: 'H1',
+      prompt: 'Jose harvested 125 mangoes. He gave 12 to his neighbor. How many were left?',
+      type: 'multiple_choice',
+      answer: '113',
+      options: ['113', '103', '123', '137'],
+    },
+    {
+      id: 'H2',
+      prompt: 'Carla bought clothes for P225.00. How much was her change if she gave P250.00?',
+      type: 'multiple_choice',
+      answer: '25',
+      options: ['25', '15', '35', '20'],
+    },
+  ]
+
+  // Randomize options for each question
+  const questionsWithShuffledOptions = baseQuestions.map((question) => ({
+    ...question,
+    options: shuffleOptions(question.options, question.answer),
+  }))
+
   return {
     id: 'H',
     name: 'Subtraction Word Problem',
     points: 2,
     time_limit_seconds: 60,
-    questions: [
-      {
-        id: 'H1',
-        prompt: 'Jose harvested 125 mangoes. He gave 12 to his neighbor. How many were left?',
-        type: 'multiple_choice',
-        answer: '113',
-        options: ['113', '103', '123', '137'],
-      },
-      {
-        id: 'H2',
-        prompt: 'Carla bought clothes for P225.00. How much was her change if she gave P250.00?',
-        type: 'multiple_choice',
-        answer: '25',
-        options: ['25', '15', '35', '20'],
-      },
-    ],
+    questions: questionsWithShuffledOptions,
   }
 })
 

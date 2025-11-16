@@ -17,7 +17,12 @@ const router = useRouter()
 
 const loading = ref(false)
 
+const section = ref('Rose')
 const gender = ref('male')
+
+const selectGender = (selectedGender: string) => {
+  gender.value = selectedGender
+}
 
 const register = async (e: Event) => {
   const form = e.target as HTMLFormElement
@@ -30,6 +35,7 @@ const register = async (e: Event) => {
       data: {
         first_name: formData.get('first_name') as string,
         last_name: formData.get('last_name') as string,
+        section: section.value,
         gender: gender.value,
       },
     },
@@ -69,16 +75,42 @@ const register = async (e: Event) => {
           </div>
 
           <div class="mt-4 grid gap-2">
-            <Label for="gender">Gender</Label>
-            <Select v-model="gender">
+            <Label for="section">Section</Label>
+            <Select v-model="section">
               <SelectTrigger class="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
+                <SelectItem value="Rose">Rose</SelectItem>
+                <SelectItem value="Sampaguita">Sampaguita</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div class="mt-4 grid gap-2">
+            <Label for="gender">Gender</Label>
+            <div class="flex gap-2">
+              <Button
+                type="button"
+                @click="selectGender('male')"
+                :class="[
+                  'flex-1 bg-blue-500 text-white hover:bg-blue-600',
+                  gender === 'male' ? 'ring-2 ring-blue-700 ring-offset-2' : '',
+                ]"
+              >
+                Male
+              </Button>
+              <Button
+                type="button"
+                @click="selectGender('female')"
+                :class="[
+                  'flex-1 bg-pink-500 text-white hover:bg-pink-600',
+                  gender === 'female' ? 'ring-2 ring-pink-700 ring-offset-2' : '',
+                ]"
+              >
+                Female
+              </Button>
+            </div>
           </div>
 
           <div class="mt-4 grid gap-2">

@@ -119,45 +119,63 @@ const { user, loading: authLoading } = useAuth()
 const { getOrCreateAssessment, updateTaskScore, calculateTaskScore, currentAssessment } =
   useAssessment()
 
+// Shuffle function to randomize multiple choice options
+const shuffleOptions = (options: string[], correctAnswer: string) => {
+  const shuffled = [...options]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
 // Get Task E data from the JSON and convert to multiple choice
 const taskData = computed(() => {
+  const baseQuestions = [
+    {
+      id: 'E1',
+      prompt: 'Find the sum of the blocks representation shown in the image.',
+      type: 'multiple_choice',
+      answer: '355',
+      options: ['355', '345', '365', '335'],
+      media: { type: 'image', file: 'addition-blocks-e1.png' },
+    },
+    {
+      id: 'E2',
+      prompt: 'Find the sum of the blocks representation shown in the image.',
+      type: 'multiple_choice',
+      answer: '282',
+      options: ['282', '272', '292', '262'],
+      media: { type: 'image', file: 'addition-blocks-e2.png' },
+    },
+    {
+      id: 'E3a',
+      prompt: '152 + 234 = ?',
+      type: 'multiple_choice',
+      answer: '386',
+      options: ['386', '376', '396', '366'],
+    },
+    {
+      id: 'E3b',
+      prompt: '457 + 36 = ?',
+      type: 'multiple_choice',
+      answer: '493',
+      options: ['493', '483', '503', '473'],
+    },
+  ]
+
+  // Randomize options for each question
+  const questionsWithShuffledOptions = baseQuestions.map((question) => ({
+    ...question,
+    options: shuffleOptions(question.options, question.answer),
+  }))
+
   return {
     id: 'E',
     name: 'Addition',
     points: 4,
     time_limit_seconds: 120,
-    questions: [
-      {
-        id: 'E1',
-        prompt: 'Find the sum of the blocks representation shown in the image.',
-        type: 'multiple_choice',
-        answer: '355',
-        options: ['355', '345', '365', '335'],
-        media: { type: 'image', file: 'addition-blocks-e1.png' },
-      },
-      {
-        id: 'E2',
-        prompt: 'Find the sum of the blocks representation shown in the image.',
-        type: 'multiple_choice',
-        answer: '282',
-        options: ['282', '272', '292', '262'],
-        media: { type: 'image', file: 'addition-blocks-e2.png' },
-      },
-      {
-        id: 'E3a',
-        prompt: '152 + 234 = ?',
-        type: 'multiple_choice',
-        answer: '386',
-        options: ['386', '376', '396', '366'],
-      },
-      {
-        id: 'E3b',
-        prompt: '457 + 36 = ?',
-        type: 'multiple_choice',
-        answer: '493',
-        options: ['493', '483', '503', '473'],
-      },
-    ],
+    questions: questionsWithShuffledOptions,
   }
 })
 

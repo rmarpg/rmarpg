@@ -130,23 +130,9 @@
         </div>
       </div>
 
-      <!-- Navigation -->
-      <div class="mt-8 flex items-center justify-between border-t pt-6">
-        <button
-          @click="previousQuestion"
-          :disabled="currentQuestionIndex === 0"
-          class="rounded-lg bg-gray-100 px-6 py-2 text-gray-700 transition-colors duration-200 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Previous
-        </button>
-        <button
-          @click="
-            currentQuestionIndex === task.questions.length - 1 ? completeTask() : nextQuestion()
-          "
-          class="rounded-lg bg-blue-500 px-6 py-2 text-white transition-colors duration-200 hover:bg-blue-600"
-        >
-          {{ currentQuestionIndex === task.questions.length - 1 ? 'Finish' : 'Next' }}
-        </button>
+      <!-- Navigation - Auto-advance with countdown dialog -->
+      <div class="mt-8 border-t pt-6">
+        <!-- Navigation content removed - using countdown dialog instead -->
       </div>
     </div>
 
@@ -239,6 +225,102 @@
         </div>
       </div>
     </div>
+
+    <!-- Countdown Alert Dialog -->
+    <AlertDialog v-model:open="showCountdownDialog">
+      <AlertDialogContent class="max-w-md">
+        <div class="text-center">
+          <!-- Feedback Icon -->
+          <div class="mb-4 flex justify-center">
+            <div
+              v-if="feedbackState?.isCorrect"
+              class="flex h-16 w-16 items-center justify-center rounded-full bg-green-100"
+            >
+              <svg
+                class="h-8 w-8 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 13l4 4L19 7"
+                ></path>
+              </svg>
+            </div>
+            <div v-else class="flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+              <svg
+                class="h-8 w-8 text-red-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                ></path>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Feedback Message -->
+          <AlertDialogHeader class="mb-4">
+            <AlertDialogTitle class="text-center text-lg font-semibold text-gray-900">
+              {{ feedbackState?.isCorrect ? 'Correct!' : 'Incorrect' }}
+            </AlertDialogTitle>
+            <!-- Partial Score Display for Task K -->
+            <div v-if="feedbackState?.partialScore" class="mt-2">
+              <p class="text-center text-sm text-gray-600">
+                {{ feedbackState.partialScore.correct }} out of
+                {{ feedbackState.partialScore.total }} correct
+              </p>
+              <div
+                v-if="
+                  feedbackState.partialScore.details &&
+                  feedbackState.partialScore.details.length > 0
+                "
+                class="mt-1 text-center text-xs text-gray-500"
+              >
+                <span class="font-medium">
+                  {{
+                    feedbackState.partialScore.taskType === 'order'
+                      ? 'Correct order:'
+                      : feedbackState.partialScore.taskType === 'selection'
+                        ? 'Correct selection:'
+                        : 'Correct shapes:'
+                  }}
+                </span>
+                {{ feedbackState.partialScore.details.join(', ') }}
+              </div>
+            </div>
+          </AlertDialogHeader>
+
+          <!-- Countdown -->
+          <p class="mb-4 text-gray-600">
+            {{
+              currentQuestionIndex === task.questions.length - 1
+                ? 'Finishing task'
+                : 'Next question'
+            }}
+            in...
+          </p>
+
+          <!-- Large Countdown Number -->
+          <div class="mb-4 text-6xl font-bold text-blue-600">
+            {{ countdownSeconds }}
+          </div>
+
+          <!-- Progress Message -->
+          <p class="text-sm text-gray-500">
+            Question {{ currentQuestionIndex + 1 }} of {{ task.questions.length }}
+          </p>
+        </div>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>
 
@@ -246,6 +328,12 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface Question {
   id: string
@@ -286,9 +374,31 @@ const currentQuestionIndex = ref(0)
 const timeLeft = ref(props.task.time_limit_seconds)
 const answers = ref<Record<string, string>>({})
 const isSpeaking = ref(false)
-const feedbackState = ref<{ questionId: string; isCorrect: boolean } | null>(null)
+const feedbackState = ref<{
+  questionId: string
+  isCorrect: boolean
+  partialScore?: {
+    correct: number
+    total: number
+    details?: string[]
+    taskType?: 'shapes' | 'order' | 'selection'
+  }
+} | null>(null)
 const isShowingFeedback = ref(false)
 const hasAnsweredCurrentQuestion = ref(false)
+
+// Task K partial scoring - generalized for all K subtasks
+const currentTaskKScore = ref<{
+  correct: number
+  total: number
+  userShapes: string[]
+  expectedShapes: string[]
+} | null>(null)
+
+// Countdown dialog state
+const showCountdownDialog = ref(false)
+const countdownSeconds = ref(3)
+let countdownInterval: NodeJS.Timeout | null = null
 
 // Image re-view functionality
 const showImageModal = ref(false)
@@ -543,7 +653,170 @@ const handleAnswer = (answer: string) => {
   emit('answerFeedback', isCorrect, currentQuestion.value.id)
 }
 
+// Task K validation strategies
+const taskKStrategies = {
+  K1: {
+    allowedShapes: ['circle', 'half-circle', 'semi-circle', 'square'],
+    expectedShapes: ['circle', 'half-circle', 'square'],
+    validateAnswer: (userAnswer: string) => {
+      const normalizeShape = (shape: string) => {
+        if (shape === 'semi-circle') return 'half-circle'
+        return shape
+      }
+
+      const userShapes = userAnswer
+        .toLowerCase()
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s !== '')
+
+      // Remove duplicates and filter valid shapes, then normalize
+      const uniqueUserShapes = [...new Set(userShapes)]
+        .filter((shape) => taskKStrategies.K1.allowedShapes.includes(shape))
+        .map(normalizeShape)
+
+      // Remove duplicates again after normalization
+      const normalizedUniqueShapes = [...new Set(uniqueUserShapes)]
+
+      // Calculate score based on normalized shapes
+      const correctShapes = normalizedUniqueShapes.filter((shape) =>
+        taskKStrategies.K1.expectedShapes.includes(shape),
+      )
+
+      return {
+        isCorrect:
+          normalizedUniqueShapes.length > 0 &&
+          normalizedUniqueShapes.every((shape) =>
+            taskKStrategies.K1.expectedShapes.includes(shape),
+          ) &&
+          correctShapes.length > 0,
+        scoring: {
+          correct: correctShapes.length,
+          total: taskKStrategies.K1.expectedShapes.length,
+          userShapes: normalizedUniqueShapes,
+          expectedShapes: taskKStrategies.K1.expectedShapes,
+        },
+      }
+    },
+  },
+  K2: {
+    allowedShapes: ['circle', 'half-circle', 'semi-circle', 'square'],
+    expectedPattern: ['circle', 'half-circle', 'square', 'circle'],
+    validateAnswer: (userAnswer: string) => {
+      const normalizeShape = (shape: string) => {
+        if (shape === 'semi-circle') return 'half-circle'
+        return shape
+      }
+
+      const userPattern = userAnswer
+        .toLowerCase()
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s !== '')
+        .map(normalizeShape)
+
+      // Check each position in the pattern
+      const correctPositions = userPattern.filter(
+        (shape, index) =>
+          index < taskKStrategies.K2.expectedPattern.length &&
+          shape === taskKStrategies.K2.expectedPattern[index],
+      )
+
+      return {
+        isCorrect:
+          userPattern.length === taskKStrategies.K2.expectedPattern.length &&
+          correctPositions.length === taskKStrategies.K2.expectedPattern.length,
+        scoring: {
+          correct: correctPositions.length,
+          total: taskKStrategies.K2.expectedPattern.length,
+          userShapes: userPattern,
+          expectedShapes: taskKStrategies.K2.expectedPattern,
+        },
+      }
+    },
+  },
+  K3: {
+    expected3DShapes: ['pyramid', 'rectangle'],
+    validateAnswer: (userAnswer: string) => {
+      const userShapes = userAnswer
+        .toLowerCase()
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s !== '')
+
+      // Remove duplicates
+      const uniqueUserShapes = [...new Set(userShapes)]
+
+      // Calculate score based on correct selections
+      const correctShapes = uniqueUserShapes.filter((shape) =>
+        taskKStrategies.K3.expected3DShapes.includes(shape),
+      )
+
+      return {
+        isCorrect:
+          uniqueUserShapes.length === taskKStrategies.K3.expected3DShapes.length &&
+          correctShapes.length === taskKStrategies.K3.expected3DShapes.length,
+        scoring: {
+          correct: correctShapes.length,
+          total: taskKStrategies.K3.expected3DShapes.length,
+          userShapes: correctShapes, // Only show correct selections
+          expectedShapes: taskKStrategies.K3.expected3DShapes,
+        },
+      }
+    },
+  },
+  K4: {
+    expected3DShapes: ['cone', 'sphere'],
+    validateAnswer: (userAnswer: string) => {
+      const userShapes = userAnswer
+        .toLowerCase()
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s !== '')
+
+      // Remove duplicates
+      const uniqueUserShapes = [...new Set(userShapes)]
+
+      // Calculate score based on correct selections
+      const correctShapes = uniqueUserShapes.filter((shape) =>
+        taskKStrategies.K4.expected3DShapes.includes(shape),
+      )
+
+      return {
+        isCorrect:
+          uniqueUserShapes.length === taskKStrategies.K4.expected3DShapes.length &&
+          correctShapes.length === taskKStrategies.K4.expected3DShapes.length,
+        scoring: {
+          correct: correctShapes.length,
+          total: taskKStrategies.K4.expected3DShapes.length,
+          userShapes: correctShapes, // Only show correct selections
+          expectedShapes: taskKStrategies.K4.expected3DShapes,
+        },
+      }
+    },
+  },
+}
+
 const checkAnswer = (userAnswer: string, question: Question): boolean => {
+  // Use strategy pattern for Task K subtasks
+  if (
+    question.id === 'K1' ||
+    question.id === 'K2' ||
+    question.id === 'K3' ||
+    question.id === 'K4'
+  ) {
+    const strategy = taskKStrategies[question.id as keyof typeof taskKStrategies]
+    if (strategy) {
+      const result = strategy.validateAnswer(userAnswer)
+
+      // Store partial score for feedback
+      currentTaskKScore.value = result.scoring
+
+      return result.isCorrect
+    }
+  }
+
+  // Standard answer checking for other questions
   const correctAnswer = question.answer?.toString().toLowerCase().trim()
   const userAnswerNormalized = userAnswer.toString().toLowerCase().trim()
   return correctAnswer === userAnswerNormalized
@@ -551,7 +824,47 @@ const checkAnswer = (userAnswer: string, question: Question): boolean => {
 
 const provideFeedback = (isCorrect: boolean, questionId: string) => {
   // Set feedback state for visual feedback and disable interactions
-  feedbackState.value = { questionId, isCorrect }
+  let partialScore = undefined
+
+  // Add partial scoring for Task K subtasks
+  if (
+    (questionId === 'K1' || questionId === 'K2' || questionId === 'K3' || questionId === 'K4') &&
+    currentTaskKScore.value
+  ) {
+    if (questionId === 'K1') {
+      partialScore = {
+        correct: currentTaskKScore.value.correct,
+        total: currentTaskKScore.value.total,
+        details: currentTaskKScore.value.userShapes.filter((shape: string) =>
+          currentTaskKScore.value!.expectedShapes.includes(shape.toLowerCase()),
+        ),
+        taskType: 'shapes' as const,
+      }
+    } else if (questionId === 'K2') {
+      partialScore = {
+        correct: currentTaskKScore.value.correct,
+        total: currentTaskKScore.value.total,
+        details: currentTaskKScore.value.userShapes.slice(0, currentTaskKScore.value.correct),
+        taskType: 'order' as const,
+      }
+    } else if (questionId === 'K3') {
+      partialScore = {
+        correct: currentTaskKScore.value.correct,
+        total: currentTaskKScore.value.total,
+        details: currentTaskKScore.value.userShapes, // userShapes already contains only correct selections
+        taskType: 'selection' as const,
+      }
+    } else if (questionId === 'K4') {
+      partialScore = {
+        correct: currentTaskKScore.value.correct,
+        total: currentTaskKScore.value.total,
+        details: currentTaskKScore.value.userShapes, // userShapes already contains only correct selections
+        taskType: 'selection' as const,
+      }
+    }
+  }
+
+  feedbackState.value = { questionId, isCorrect, partialScore }
   isShowingFeedback.value = true
 
   // Play audio feedback
@@ -563,11 +876,33 @@ const provideFeedback = (isCorrect: boolean, questionId: string) => {
     wrongAudio.value.play().catch(console.error)
   }
 
-  // Clear feedback state after 2 seconds
-  setTimeout(() => {
-    feedbackState.value = null
-    isShowingFeedback.value = false
-  }, 2000)
+  // Start countdown dialog
+  startCountdown()
+}
+
+const startCountdown = () => {
+  countdownSeconds.value = 3
+  showCountdownDialog.value = true
+
+  countdownInterval = setInterval(() => {
+    countdownSeconds.value--
+
+    if (countdownSeconds.value <= 0) {
+      // Clear countdown and proceed
+      clearInterval(countdownInterval!)
+      countdownInterval = null
+      showCountdownDialog.value = false
+      feedbackState.value = null
+      isShowingFeedback.value = false
+
+      // Automatically proceed to next question or complete task
+      if (currentQuestionIndex.value === props.task.questions.length - 1) {
+        completeTask()
+      } else {
+        nextQuestion()
+      }
+    }
+  }, 1000)
 }
 
 const completeTask = () => {
@@ -577,16 +912,6 @@ const completeTask = () => {
 const nextQuestion = () => {
   if (currentQuestionIndex.value < props.task.questions.length - 1) {
     currentQuestionIndex.value++
-    // Reset answer state for new question
-    hasAnsweredCurrentQuestion.value = false
-    isShowingFeedback.value = false
-    feedbackState.value = null
-  }
-}
-
-const previousQuestion = () => {
-  if (currentQuestionIndex.value > 0) {
-    currentQuestionIndex.value--
     // Reset answer state for new question
     hasAnsweredCurrentQuestion.value = false
     isShowingFeedback.value = false
@@ -623,6 +948,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopTimer()
+  if (countdownInterval) {
+    clearInterval(countdownInterval)
+    countdownInterval = null
+  }
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel()
   }

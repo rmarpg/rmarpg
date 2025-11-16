@@ -119,44 +119,62 @@ const { user, loading: authLoading } = useAuth()
 const { getOrCreateAssessment, updateTaskScore, calculateTaskScore, currentAssessment } =
   useAssessment()
 
+// Shuffle function to randomize multiple choice options
+const shuffleOptions = (options: string[], correctAnswer: string) => {
+  const shuffled = [...options]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
 // Get Task G data from the JSON and convert to multiple choice
 const taskData = computed(() => {
+  const baseQuestions = [
+    {
+      id: 'G1',
+      prompt: 'Take away 14 mangoes from the picture of mangoes. How many are left?',
+      type: 'multiple_choice',
+      answer: '21',
+      options: ['21', '19', '23', '17'],
+      media: { type: 'image', file: 'task-g.png' },
+    },
+    {
+      id: 'G2a',
+      prompt: '92 - 21 = ?',
+      type: 'multiple_choice',
+      answer: '71',
+      options: ['71', '81', '61', '73'],
+    },
+    {
+      id: 'G2b',
+      prompt: '137 - 75 = ?',
+      type: 'multiple_choice',
+      answer: '62',
+      options: ['62', '52', '72', '58'],
+    },
+    {
+      id: 'G2c',
+      prompt: '396 - 178 = ?',
+      type: 'multiple_choice',
+      answer: '218',
+      options: ['218', '208', '228', '214'],
+    },
+  ]
+
+  // Randomize options for each question
+  const questionsWithShuffledOptions = baseQuestions.map((question) => ({
+    ...question,
+    options: shuffleOptions(question.options, question.answer),
+  }))
+
   return {
     id: 'G',
     name: 'Subtraction',
     points: 4,
     time_limit_seconds: 90,
-    questions: [
-      {
-        id: 'G1',
-        prompt: 'Take away 14 mangoes from the picture of mangoes. How many are left?',
-        type: 'multiple_choice',
-        answer: '21',
-        options: ['21', '19', '23', '17'],
-        media: { type: 'image', file: 'task-g.png' },
-      },
-      {
-        id: 'G2a',
-        prompt: '92 - 21 = ?',
-        type: 'multiple_choice',
-        answer: '71',
-        options: ['71', '81', '61', '73'],
-      },
-      {
-        id: 'G2b',
-        prompt: '137 - 75 = ?',
-        type: 'multiple_choice',
-        answer: '62',
-        options: ['62', '52', '72', '58'],
-      },
-      {
-        id: 'G2c',
-        prompt: '396 - 178 = ?',
-        type: 'multiple_choice',
-        answer: '218',
-        options: ['218', '208', '228', '214'],
-      },
-    ],
+    questions: questionsWithShuffledOptions,
   }
 })
 
