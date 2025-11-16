@@ -68,7 +68,7 @@ const taskData = computed(() => {
     questions: [
       {
         id: 'A1',
-        prompt: 'How do you read this number? (375)',
+        prompt: 'How do you read this number?',
         type: 'multiple_choice',
         answer: 'Three hundred seventy-five',
         options: [
