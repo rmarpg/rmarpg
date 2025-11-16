@@ -31,7 +31,11 @@
             <div class="flex justify-center">
               <Button
                 @click="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
-                :disabled="!answers[question.id] || hasAnsweredCurrentQuestion"
+                :disabled="
+                  answers[question.id] === '' ||
+                  answers[question.id] == null ||
+                  hasAnsweredCurrentQuestion
+                "
                 :class="[
                   'px-8 py-3 text-lg transition-all duration-300',
                   hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '',
@@ -70,7 +74,11 @@
             <div class="flex justify-center">
               <Button
                 @click="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
-                :disabled="!answers[question.id] || hasAnsweredCurrentQuestion"
+                :disabled="
+                  answers[question.id] === '' ||
+                  answers[question.id] == null ||
+                  hasAnsweredCurrentQuestion
+                "
                 :class="[
                   'px-8 py-3 text-lg transition-all duration-300',
                   hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '',
@@ -109,7 +117,11 @@
             <div class="flex justify-center">
               <Button
                 @click="!hasAnsweredCurrentQuestion && onAnswer(answers[question.id])"
-                :disabled="!answers[question.id] || hasAnsweredCurrentQuestion"
+                :disabled="
+                  answers[question.id] === '' ||
+                  answers[question.id] == null ||
+                  hasAnsweredCurrentQuestion
+                "
                 :class="[
                   'px-8 py-3 text-lg transition-all duration-300',
                   hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : '',
