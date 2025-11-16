@@ -184,8 +184,8 @@ const formatMathExpression = (prompt: string) => {
     if (mathPart) {
       const latexExpr = mathPart
         .replace(/x|×/g, '\\times')
-        .replace(/__/g, '\\_\\phantom{00}') // Show underscore with phantom space
-        .replace(/\?/g, '\\phantom{00}')
+        .replace(/__/g, '\\underline{\\hspace{1.5em}}') // Use underlined space instead of phantom text
+        .replace(/\?/g, '\\underline{\\hspace{1.5em}}')
       return katex.renderToString(latexExpr, {
         displayMode: false,
         throwOnError: false,
