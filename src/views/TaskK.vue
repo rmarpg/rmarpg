@@ -641,14 +641,124 @@ const onTaskComplete = async (taskAnswers: Record<string, string>) => {
   console.log('Task K completed with answers:', taskAnswers)
   console.log('currentAssessment.value at completion:', currentAssessment.value)
 
-  // Calculate score for Task K
-  const score = calculateTaskScore(taskAnswers, taskData.value.questions, taskData.value.points)
-  console.log(`Task K score: ${score}/${taskData.value.points}`)
+  // Use custom scoring for Task K since it has special validation logic
+  let totalScore = 0
+  const questions = taskData.value.questions
+
+  // Calculate score using the same strategy pattern logic
+  questions.forEach((question) => {
+    const userAnswer = taskAnswers[question.id] || ''
+
+    if (
+      question.id === 'K1' ||
+      question.id === 'K2' ||
+      question.id === 'K3' ||
+      question.id === 'K4'
+    ) {
+      // Use the strategy pattern validation from Task component
+      const taskKStrategies = {
+        K1: {
+          expectedShapes: ['circle', 'half-circle', 'square'],
+          validate: (answer: string) => {
+            const normalizeShape = (shape: string) =>
+              shape === 'semi-circle' ? 'half-circle' : shape
+            const userShapes = answer
+              .toLowerCase()
+              .split(',')
+              .map((s) => s.trim())
+              .filter((s) => s !== '')
+            const uniqueUserShapes = [...new Set(userShapes)].map(normalizeShape)
+            const normalizedUniqueShapes = [...new Set(uniqueUserShapes)]
+            const correctShapes = normalizedUniqueShapes.filter((shape) =>
+              taskKStrategies.K1.expectedShapes.includes(shape),
+            )
+            return (
+              normalizedUniqueShapes.length > 0 &&
+              normalizedUniqueShapes.every((shape) =>
+                taskKStrategies.K1.expectedShapes.includes(shape),
+              ) &&
+              correctShapes.length > 0
+            )
+          },
+        },
+        K2: {
+          expectedPattern: ['circle', 'half-circle', 'square', 'circle'],
+          validate: (answer: string) => {
+            const normalizeShape = (shape: string) =>
+              shape === 'semi-circle' ? 'half-circle' : shape
+            const userPattern = answer
+              .toLowerCase()
+              .split(',')
+              .map((s) => s.trim())
+              .filter((s) => s !== '')
+              .map(normalizeShape)
+            const correctPositions = userPattern.filter(
+              (shape, index) =>
+                index < taskKStrategies.K2.expectedPattern.length &&
+                shape === taskKStrategies.K2.expectedPattern[index],
+            )
+            return (
+              userPattern.length === taskKStrategies.K2.expectedPattern.length &&
+              correctPositions.length === taskKStrategies.K2.expectedPattern.length
+            )
+          },
+        },
+        K3: {
+          expectedShapes: ['pyramid', 'rectangle'],
+          validate: (answer: string) => {
+            const userShapes = answer
+              .toLowerCase()
+              .split(',')
+              .map((s) => s.trim())
+              .filter((s) => s !== '')
+            const uniqueUserShapes = [...new Set(userShapes)]
+            const correctShapes = uniqueUserShapes.filter((shape) =>
+              taskKStrategies.K3.expectedShapes.includes(shape),
+            )
+            return (
+              uniqueUserShapes.length === taskKStrategies.K3.expectedShapes.length &&
+              correctShapes.length === taskKStrategies.K3.expectedShapes.length
+            )
+          },
+        },
+        K4: {
+          expectedShapes: ['cone', 'sphere'],
+          validate: (answer: string) => {
+            const userShapes = answer
+              .toLowerCase()
+              .split(',')
+              .map((s) => s.trim())
+              .filter((s) => s !== '')
+            const uniqueUserShapes = [...new Set(userShapes)]
+            const correctShapes = uniqueUserShapes.filter((shape) =>
+              taskKStrategies.K4.expectedShapes.includes(shape),
+            )
+            return (
+              uniqueUserShapes.length === taskKStrategies.K4.expectedShapes.length &&
+              correctShapes.length === taskKStrategies.K4.expectedShapes.length
+            )
+          },
+        },
+      }
+
+      const strategy = taskKStrategies[question.id as keyof typeof taskKStrategies]
+      if (strategy && strategy.validate(userAnswer)) {
+        totalScore += Math.round(taskData.value.points / questions.length) // Equal points per question
+      }
+    } else {
+      // Standard validation for other question types
+      if (userAnswer === question.answer) {
+        totalScore += Math.round(taskData.value.points / questions.length)
+      }
+    }
+  })
+
+  console.log(`Task K score: ${totalScore}/${taskData.value.points}`)
 
   // Update assessment with Task K score
   if (currentAssessment.value) {
     console.log('Updating score for assessment:', currentAssessment.value.id)
-    const success = await updateTaskScore('K', score)
+    const success = await updateTaskScore('K', totalScore)
     if (success) {
       console.log('Task K score saved successfully')
       // Navigate to results page (assessment complete)
@@ -662,7 +772,7 @@ const onTaskComplete = async (taskAnswers: Record<string, string>) => {
     const assessment = await getOrCreateAssessment(user.value!, 2)
     if (assessment) {
       console.log('Created assessment during completion, retrying score update...')
-      const success = await updateTaskScore('K', score)
+      const success = await updateTaskScore('K', totalScore)
       if (success) {
         console.log('Task K score saved successfully after retry')
         router.push('/results')
