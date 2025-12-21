@@ -30,9 +30,7 @@
                 getButtonFeedbackClass(option, question, feedbackState),
               ]"
             >
-              <span class="mr-2 flex-shrink-0 text-sm font-medium sm:mr-3 sm:text-base">
-                {{ String.fromCharCode(65 + index) }}.
-              </span>
+
               <span v-html="formatOption(option)" class="text-sm sm:text-base"></span>
             </Button>
           </div>

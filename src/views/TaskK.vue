@@ -320,7 +320,6 @@
                 hasAnsweredCurrentQuestion ? 'cursor-not-allowed' : 'cursor-pointer',
               ]"
             >
-              <span class="mr-3 font-medium">{{ String.fromCharCode(65 + index) }}.</span>
               {{ option }}
             </Button>
           </div>
