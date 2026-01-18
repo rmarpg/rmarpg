@@ -133,14 +133,12 @@ const fetchLeaderboard = async () => {
 
     if (fetchError) {
       console.warn('Error fetching leaderboard:', fetchError)
-      // Use sample data if database query fails
-      leaderboard.value = generateSampleLeaderboard()
+      error.value = 'Failed to load leaderboard'
       return
     }
 
     if (!data || data.length === 0) {
-      // Use sample data if no real data exists
-      leaderboard.value = generateSampleLeaderboard()
+      leaderboard.value = []
       return
     }
 
@@ -180,56 +178,9 @@ const fetchLeaderboard = async () => {
   } catch (err) {
     console.error('Unexpected error fetching leaderboard:', err)
     error.value = 'Failed to load leaderboard'
-    // Fallback to sample data
-    leaderboard.value = generateSampleLeaderboard()
   } finally {
     loading.value = false
   }
-}
-
-const generateSampleLeaderboard = (): LeaderboardEntry[] => {
-  return [
-    {
-      id: '1',
-      learner_id: 'sample1',
-      learner_name: 'Alex Johnson',
-      total_score: 95,
-      grade_level: 2,
-      created_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-    },
-    {
-      id: '2',
-      learner_id: 'sample2',
-      learner_name: 'Maria Garcia',
-      total_score: 87,
-      grade_level: 2,
-      created_at: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-    },
-    {
-      id: '3',
-      learner_id: 'sample3',
-      learner_name: 'David Kim',
-      total_score: 82,
-      grade_level: 2,
-      created_at: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
-    },
-    {
-      id: '4',
-      learner_id: 'sample4',
-      learner_name: 'Emma Wilson',
-      total_score: 78,
-      grade_level: 2,
-      created_at: new Date(Date.now() - 345600000).toISOString(), // 4 days ago
-    },
-    {
-      id: '5',
-      learner_id: 'sample5',
-      learner_name: 'James Brown',
-      total_score: 74,
-      grade_level: 2,
-      created_at: new Date(Date.now() - 432000000).toISOString(), // 5 days ago
-    },
-  ]
 }
 
 const formatDate = (dateString: string): string => {
