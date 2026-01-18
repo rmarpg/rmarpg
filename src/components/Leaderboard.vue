@@ -127,8 +127,7 @@ const fetchLeaderboard = async () => {
         )
       `,
       )
-      .not('total_score', 'is', null)
-      .not('overall_score', 'is', null)
+      .not('completed_at', 'is', null)
       .order('total_score', { ascending: false })
       .limit(10)
 
