@@ -27,6 +27,7 @@ export interface Assessment {
   task_k_score: number
   total_score: number
   overall_score: number
+  completed_at?: string | null
   created_at?: string
   updated_at?: string
 }
@@ -278,6 +279,7 @@ export function useAssessment() {
         .from('assessments')
         .select('*')
         .eq('learner_id', user.id)
+        .is('completed_at', null)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle() // Use maybeSingle instead of single to handle no results gracefully

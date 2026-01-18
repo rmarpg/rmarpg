@@ -357,6 +357,7 @@ import RMALayout from '@/layouts/RMALayout.vue'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/composables/useAuth'
 import { useAssessment } from '@/composables/useAssessment'
+import { supabase } from '@/lib/supabase-client'
 
 // Simple answer tracking per question
 const answers = ref<Record<string, string>>({
@@ -774,6 +775,18 @@ const onTaskComplete = async (taskAnswers: Record<string, string>) => {
       const success = await updateTaskScore('K', totalScore)
       if (success) {
         console.log('Task K score saved successfully')
+
+        // Mark assessment as completed since Task K is the final task
+        const { error } = await supabase
+          .from('assessments')
+          .update({ completed_at: new Date().toISOString() })
+          .eq('id', assessment.id)
+
+        if (error) {
+          console.error('Failed to mark assessment as complete:', error)
+        } else {
+          console.log('Assessment marked as complete')
+        }
       } else {
         console.error('Failed to save Task K score')
       }

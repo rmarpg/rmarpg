@@ -75,8 +75,8 @@ const refreshStartPermission = async () => {
   // Check for ongoing assessment
   try {
     const assessment = await getCurrentAssessment(user.value)
-    // An assessment is ongoing if it exists and overall_score is not set (not completed)
-    hasOngoingAssessment.value = !!(assessment && !assessment.overall_score)
+    // An assessment is ongoing if it exists and is not completed
+    hasOngoingAssessment.value = !!assessment
   } catch {
     hasOngoingAssessment.value = false
   }
