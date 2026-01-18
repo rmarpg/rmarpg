@@ -90,6 +90,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { supabase } from '@/lib/supabase-client'
+import { useAuth } from '@/composables/useAuth'
 
 interface LeaderboardEntry {
   id: string
@@ -103,6 +104,7 @@ interface LeaderboardEntry {
 const leaderboard = ref<LeaderboardEntry[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+const { user } = useAuth()
 
 const fetchLeaderboard = async () => {
   try {
@@ -142,16 +144,34 @@ const fetchLeaderboard = async () => {
       return
     }
 
-    // Process the real data
-    leaderboard.value = data.map((assessment) => {
+    // Group by learner_id and keep highest total_score per user
+    const byUser: Record<string, any> = {}
+    for (const assessment of data) {
+      const key = assessment.learner_id
+      if (!key) continue
+      const existing = byUser[key]
+      if (!existing || (assessment.total_score ?? 0) > (existing.total_score ?? 0)) {
+        byUser[key] = assessment
+      }
+    }
+    const grouped = Object.values(byUser)
+      .sort((a: any, b: any) => (b.total_score ?? 0) - (a.total_score ?? 0))
+      .slice(0, 10)
+
+    // Process the grouped data
+    leaderboard.value = grouped.map((assessment: any) => {
       const profile = assessment.profiles as any
+      const baseName =
+        profile && profile.first_name && profile.last_name
+          ? `${profile.first_name} ${profile.last_name}`.trim()
+          : 'Anonymous'
+
+      const isCurrentUser = user.value && user.value.id === assessment.learner_id
+
       return {
         id: assessment.id,
         learner_id: assessment.learner_id,
-        learner_name:
-          profile && profile.first_name && profile.last_name
-            ? `${profile.first_name} ${profile.last_name}`.trim()
-            : null,
+        learner_name: isCurrentUser ? `${baseName} (You)` : baseName,
         total_score: assessment.total_score,
         grade_level: assessment.grade_level,
         created_at: assessment.created_at,

@@ -643,10 +643,16 @@ const onTaskComplete = async (taskAnswers: Record<string, string>) => {
   // Use custom scoring for Task K since it has special validation logic
   let totalScore = 0
   const questions = taskData.value.questions
+  const basePointsPerQuestion = Math.floor(taskData.value.points / questions.length)
+  const remainder = taskData.value.points % questions.length
 
   // Calculate score using the same strategy pattern logic
-  questions.forEach((question) => {
+  questions.forEach((question, questionIndex) => {
     const userAnswer = taskAnswers[question.id] || ''
+    // Last question gets the remainder points
+    const pointsForThisQuestion = questionIndex === questions.length - 1
+      ? basePointsPerQuestion + remainder
+      : basePointsPerQuestion
 
     if (
       question.id === 'K1' ||
@@ -742,45 +748,45 @@ const onTaskComplete = async (taskAnswers: Record<string, string>) => {
 
       const strategy = taskKStrategies[question.id as keyof typeof taskKStrategies]
       if (strategy && strategy.validate(userAnswer)) {
-        totalScore += Math.round(taskData.value.points / questions.length) // Equal points per question
+        totalScore += pointsForThisQuestion
       }
     } else {
       // Standard validation for other question types
       if (userAnswer === question.answer) {
-        totalScore += Math.round(taskData.value.points / questions.length)
+        totalScore += pointsForThisQuestion
       }
     }
   })
 
   console.log(`Task K score: ${totalScore}/${taskData.value.points}`)
 
-  // Update assessment with Task K score
-  if (currentAssessment.value) {
-    console.log('Updating score for assessment:', currentAssessment.value.id)
-    const success = await updateTaskScore('K', totalScore)
-    if (success) {
-      console.log('Task K score saved successfully')
-      // Navigate to results page (assessment complete)
-      router.push('/results')
-    } else {
-      console.error('Failed to save Task K score')
+  try {
+    // Ensure we have an assessment
+    let assessment = currentAssessment.value
+    if (!assessment && user.value) {
+      console.log('No current assessment, attempting to create one...')
+      assessment = await getOrCreateAssessment(user.value)
     }
-  } else {
-    console.error('No current assessment found')
-    console.error('Attempting to create assessment during task completion...')
-    const assessment = await getOrCreateAssessment(user.value!, 2)
+
+    // Update assessment with Task K score
     if (assessment) {
-      console.log('Created assessment during completion, retrying score update...')
+      console.log('Updating score for assessment:', assessment.id)
       const success = await updateTaskScore('K', totalScore)
       if (success) {
-        console.log('Task K score saved successfully after retry')
-        router.push('/results')
+        console.log('Task K score saved successfully')
       } else {
-        console.error('Failed to save Task K score even after creating assessment')
+        console.error('Failed to save Task K score')
       }
     } else {
-      console.error('Failed to create assessment during task completion')
+      console.error('No current assessment found and unable to create one')
     }
+
+    // Navigate to results page after save attempt
+    router.push('/results')
+  } catch (e) {
+    console.error('Error in task completion:', e)
+    // Still navigate even on error
+    router.push('/results')
   }
 }
 
@@ -793,8 +799,12 @@ const onTimeUp = () => {
 const initializeAssessment = async () => {
   if (user.value) {
     console.log('Initializing assessment for user:', user.value.email)
-    await getOrCreateAssessment(user.value)
-    console.log('Assessment initialized, currentAssessment.value:', currentAssessment.value)
+    const assessment = await getOrCreateAssessment(user.value)
+    if (assessment) {
+      console.log('Assessment initialized, id:', assessment.id)
+    } else {
+      console.warn('Failed to initialize assessment during mount')
+    }
   } else {
     console.error('No user found during assessment initialization')
   }

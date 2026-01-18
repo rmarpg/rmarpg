@@ -1,17 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuth } from '@/composables/useAuth'
+import { supabase } from '@/lib/supabase-client'
 import { useRoute } from 'vue-router'
 
 const sidebarOpen = ref(false) // Default to closed on mobile
 const isMobile = ref(false)
-const { logout } = useAuth()
+const { logout, user } = useAuth()
 const route = useRoute()
 
 // Computed properties for active states
 const isScoresheet = computed(() => route.path === '/scoresheet')
 const isSummary = computed(() => route.path === '/summary')
 const isGraph = computed(() => route.path === '/graph')
+const isAdminRetry = computed(() => route.path === '/admin/retry-requests')
+
+const isAdmin = ref(false)
 
 const checkIsMobile = () => {
   isMobile.value = window.innerWidth < 1024 // lg breakpoint
@@ -37,6 +41,21 @@ const closeSidebarOnMobile = () => {
 onMounted(() => {
   checkIsMobile()
   window.addEventListener('resize', checkIsMobile)
+  // Fetch admin flag
+  const fetchAdmin = async () => {
+    try {
+      if (!user.value) return
+      const { data } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.value.id)
+        .single()
+      isAdmin.value = !!data?.is_admin
+    } catch {
+      isAdmin.value = false
+    }
+  }
+  fetchAdmin()
 })
 
 onUnmounted(() => {
@@ -162,6 +181,27 @@ onUnmounted(() => {
             />
           </svg>
           <span v-if="sidebarOpen || isMobile" class="truncate">Graph</span>
+        </RouterLink>
+
+        <RouterLink
+          v-if="isAdmin"
+          to="/admin/retry-requests"
+          @click="closeSidebarOnMobile"
+          :class="[
+            'group flex w-full items-center rounded-md px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-blue-700',
+            isAdminRetry ? 'bg-blue-700 text-white' : 'text-blue-200 hover:text-white',
+          ]"
+        >
+          <svg
+            class="mr-3 h-5 w-5 flex-shrink-0"
+            :class="[isAdminRetry ? 'text-white' : 'text-blue-300']"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M3 11h18M5 19h14a2 2 0 002-2v-4H3v4a2 2 0 002 2z" />
+          </svg>
+          <span v-if="sidebarOpen || isMobile" class="truncate">Retry Requests</span>
         </RouterLink>
 
         <!-- Logout Button -->

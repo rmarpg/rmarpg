@@ -3,7 +3,7 @@ import Home from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
 import Welcome from '@/views/Welcome.vue'
 import Scoresheet from '@/views/Scoresheet.vue'
-import { guest } from '@/router/middleware'
+import { guest, adminGuard } from '@/router/middleware'
 import { supabase } from '@/lib/supabase-client'
 
 const router = createRouter({
@@ -116,6 +116,13 @@ const router = createRouter({
       name: 'graph',
       component: () => import('@/views/AdminGraphs.vue'),
       meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/retry-requests',
+      name: 'admin-retry-requests',
+      component: () => import('@/views/AdminRetryRequests.vue'),
+      meta: { requiresAuth: true },
+      beforeEnter: adminGuard,
     },
   ],
 })

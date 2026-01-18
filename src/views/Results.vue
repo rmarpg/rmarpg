@@ -167,7 +167,7 @@
                       d="m12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10-10-4.477-10-10 4.477-10 10-10zm0 18c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8z"
                     ></path>
                   </svg>
-                  Setting up retry...
+                  Checking permissions...
                 </span>
                 <span v-else>🔄 Retry Assessment</span>
               </button>
@@ -176,6 +176,18 @@
                 class="flex-1 rounded-lg bg-gray-600 px-6 py-3 font-medium text-white transition-colors hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:outline-none"
               >
                 🏠 Back to Home
+              </button>
+            </div>
+            <div v-if="!canRetry" class="mt-3 text-center text-xs text-red-600">
+              {{ retryBlockReason }}
+            </div>
+            <div v-if="!canRetry" class="mt-3 flex items-center justify-center">
+              <button
+                @click="requestExtra"
+                :disabled="retrying || requestStatus === 'pending'"
+                class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+              >
+                {{ requestStatus === 'pending' ? 'Request Sent' : 'Request Extra Try' }}
               </button>
             </div>
             <p class="mt-3 text-center text-xs text-gray-500">
@@ -222,10 +234,19 @@ import { supabase } from '@/lib/supabase-client'
 
 const router = useRouter()
 const { user } = useAuth()
-const { loading: assessmentLoading, getCurrentAssessment, createAssessment } = useAssessment()
+const {
+  loading: assessmentLoading,
+  getBestAssessment,
+  canStartAssessment,
+  requestExtraAttempt,
+  MAX_ATTEMPTS,
+} = useAssessment()
 
 const loading = ref(true)
 const retrying = ref(false)
+const canRetry = ref(true)
+const retryBlockReason = ref('')
+const requestStatus = ref<'none' | 'pending' | 'approved' | 'denied'>('none')
 const assessment = ref<Assessment | null>(null)
 
 // Task configuration for score calculation
@@ -300,7 +321,7 @@ const loadResults = async () => {
 
   try {
     loading.value = true
-    const result = await getCurrentAssessment(user.value)
+    const result = await getBestAssessment(user.value)
 
     if (result) {
       assessment.value = result
@@ -316,26 +337,37 @@ const loadResults = async () => {
 
 const retryAssessment = async () => {
   if (!user.value) return
-
-  try {
-    retrying.value = true
-
-    // Delete the current assessment to allow a fresh start
-    if (assessment.value?.id) {
-      const { error } = await supabase.from('assessments').delete().eq('id', assessment.value.id)
-
-      if (error) {
-        console.error('Error deleting assessment:', error)
-        return
-      }
+  retrying.value = true
+  const res = await canStartAssessment(user.value)
+  retrying.value = false
+  if (!res.allowed) {
+    canRetry.value = false
+    retryBlockReason.value = res.reason || `Attempt limit reached (${MAX_ATTEMPTS}).`
+    // Fetch latest request status
+    try {
+      const { data } = await supabase
+        .from('assessment_retry_requests')
+        .select('status')
+        .eq('learner_id', user.value.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      requestStatus.value = (data?.status as any) || 'none'
+    } catch {
+      requestStatus.value = 'none'
     }
+    return
+  }
+  router.push('/welcome')
+}
 
-    // Navigate back to welcome page to start fresh
-    router.push('/welcome')
-  } catch (error) {
-    console.error('Error setting up retry:', error)
-  } finally {
-    retrying.value = false
+const requestExtra = async () => {
+  if (!user.value) return
+  retrying.value = true
+  const res = await requestExtraAttempt(user.value)
+  retrying.value = false
+  if (res.success) {
+    requestStatus.value = 'pending'
   }
 }
 

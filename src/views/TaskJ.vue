@@ -221,19 +221,33 @@ const onTaskComplete = async (taskAnswers: Record<string, string>) => {
   const score = calculateTaskScore(taskAnswers, taskData.value.questions, taskData.value.points)
   console.log(`Task J score: ${score}/${taskData.value.points}`)
 
-  // Update assessment with Task J score
-  if (currentAssessment.value) {
-    console.log('Updating score for assessment:', currentAssessment.value.id)
-    const success = await updateTaskScore('J', score)
-    if (success) {
-      console.log('Task J score saved successfully')
-      // Navigate to Task K
-      router.push('/task-k')
-    } else {
-      console.error('Failed to save Task J score')
+  try {
+    // Ensure we have an assessment
+    let assessment = currentAssessment.value
+    if (!assessment && user.value) {
+      console.log('No current assessment, attempting to create one...')
+      assessment = await getOrCreateAssessment(user.value)
     }
-  } else {
-    console.error('No current assessment found')
+
+    // Update assessment with Task J score
+    if (assessment) {
+      console.log('Updating score for assessment:', assessment.id)
+      const success = await updateTaskScore('J', score)
+      if (success) {
+        console.log('Task J score saved successfully')
+      } else {
+        console.error('Failed to save Task J score')
+      }
+    } else {
+      console.error('No current assessment found and unable to create one')
+    }
+
+    // Navigate to Task K after save attempt
+    router.push('/task-k')
+  } catch (e) {
+    console.error('Error in task completion:', e)
+    // Still navigate even on error
+    router.push('/task-k')
   }
 }
 
@@ -246,8 +260,12 @@ const onTimeUp = () => {
 const initializeAssessment = async () => {
   if (user.value) {
     console.log('Initializing assessment for user:', user.value.email)
-    await getOrCreateAssessment(user.value)
-    console.log('Assessment initialized, currentAssessment.value:', currentAssessment.value)
+    const assessment = await getOrCreateAssessment(user.value)
+    if (assessment) {
+      console.log('Assessment initialized, id:', assessment.id)
+    } else {
+      console.warn('Failed to initialize assessment during mount')
+    }
   } else {
     console.error('No user found during assessment initialization')
   }

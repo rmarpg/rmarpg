@@ -79,3 +79,40 @@ export const taskGuard = async (
   // User has an assessment, allow access to task
   next()
 }
+
+/**
+ * Admin middleware: restrict routes to users with profiles.is_admin = true
+ */
+export const adminGuard = async (
+  to: RouteLocationNormalized,
+  from: RouteLocationNormalized,
+  next: NavigationGuardNext,
+) => {
+  const { data: sessionData } = await supabase.auth.getSession()
+  if (!sessionData.session) {
+    next('/')
+    return
+  }
+
+  const uid = sessionData.session.user.id
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', uid)
+      .single()
+    if (error) {
+      console.warn('Admin check failed:', error)
+      next('/welcome')
+      return
+    }
+    if (!data?.is_admin) {
+      next('/welcome')
+      return
+    }
+    next()
+  } catch (err) {
+    console.error('Unexpected admin check error:', err)
+    next('/welcome')
+  }
+}

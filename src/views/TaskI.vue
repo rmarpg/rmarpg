@@ -36,12 +36,8 @@
                 getButtonFeedbackClass(choice.letter, question, feedbackState),
               ]"
             >
-              <div class="flex flex-col items-center space-y-2">
-                <div
-                  class="font-mono text-base sm:text-lg"
-                  v-html="formatMultiplication(choice.equation)"
-                ></div>
-                <div class="text-lg font-bold sm:text-xl">{{ choice.letter }}</div>
+              <div class="flex flex-col items-center">
+                <div class="font-mono text-base sm:text-lg" v-html="formatMultiplication(choice.equation)"></div>
               </div>
             </Button>
           </div>
@@ -140,7 +136,7 @@ const multiplicationChoicesI1 = [
 const multiplicationChoicesI2 = [
   { letter: 'A', equation: '4 × 5 = 20' },
   { letter: 'B', equation: '2 × 10 = 20' },
-  { letter: 'C', equation: '4 × 5 = 10' },
+  { letter: 'C', equation: '2 × 5 = 10' },
 ]
 
 // Simple answer tracking per question

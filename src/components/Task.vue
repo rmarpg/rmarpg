@@ -1,5 +1,42 @@
 <template>
   <div class="mx-auto mt-4 max-w-7xl px-3 sm:mt-8 sm:px-4 lg:px-6">
+    <!-- Progress Restored Banner -->
+    <div
+      v-if="progressRestored"
+      class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm"
+    >
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <svg
+            class="h-5 w-5 text-blue-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
+          </svg>
+          <div>
+            <p class="text-sm font-medium text-blue-900">Progress Restored</p>
+            <p class="text-xs text-blue-700">
+              Continuing from question {{ currentQuestionIndex + 1 }} of
+              {{ task.questions.length }}
+            </p>
+          </div>
+        </div>
+        <button
+          @click="restartTask"
+          class="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-blue-600 shadow-sm transition-colors hover:bg-blue-100"
+        >
+          Restart Task
+        </button>
+      </div>
+    </div>
+
     <!-- Header with Task Info -->
     <div class="mb-4 rounded-lg bg-white p-3 shadow-sm sm:mb-6 sm:p-4 lg:p-6">
       <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
@@ -232,38 +269,40 @@
         <div class="text-center">
           <!-- Feedback Icon -->
           <div class="mb-4 flex justify-center">
-            <div
-              v-if="feedbackState?.isCorrect"
-              class="flex h-16 w-16 items-center justify-center rounded-full bg-green-100"
-            >
-              <svg
-                class="h-8 w-8 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            <div v-if="feedbackState">
+              <div
+                v-if="feedbackState.isCorrect"
+                class="flex h-16 w-16 items-center justify-center rounded-full bg-green-100"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M5 13l4 4L19 7"
-                ></path>
-              </svg>
-            </div>
-            <div v-else class="flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
-              <svg
-                class="h-8 w-8 text-red-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                ></path>
-              </svg>
+                <svg
+                  class="h-8 w-8 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M5 13l4 4L19 7"
+                  ></path>
+                </svg>
+              </div>
+              <div v-else class="flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+                <svg
+                  class="h-8 w-8 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  ></path>
+                </svg>
+              </div>
             </div>
           </div>
 
@@ -334,6 +373,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { useAssessment } from '@/composables/useAssessment'
+import { useAuth } from '@/composables/useAuth'
 
 interface Question {
   id: string
@@ -369,6 +410,11 @@ const emit = defineEmits<{
   answerFeedback: [isCorrect: boolean, questionId: string]
 }>()
 
+// Initialize composables
+const { currentAssessment, saveTaskProgress, loadTaskProgress, clearTaskProgress } =
+  useAssessment()
+const { user } = useAuth()
+
 // State
 const currentQuestionIndex = ref(0)
 const timeLeft = ref(props.task.time_limit_seconds)
@@ -386,6 +432,7 @@ const feedbackState = ref<{
 } | null>(null)
 const isShowingFeedback = ref(false)
 const hasAnsweredCurrentQuestion = ref(false)
+const progressRestored = ref(false)
 
 // Task K partial scoring - generalized for all K subtasks
 const currentTaskKScore = ref<{
@@ -519,6 +566,8 @@ const startTimer = () => {
   timerInterval = setInterval(() => {
     if (timeLeft.value > 0) {
       timeLeft.value--
+      // Save progress every second as timer counts down
+      saveProgress()
     } else {
       stopTimer()
       emit('timeUp')
@@ -644,6 +693,9 @@ const handleAnswer = (answer: string) => {
 
   answers.value[currentQuestion.value.id] = answer
   hasAnsweredCurrentQuestion.value = true
+
+  // Save progress after answering
+  saveProgress()
 
   // Check if answer is correct and provide feedback
   const isCorrect = checkAnswer(answer, currentQuestion.value)
@@ -906,6 +958,8 @@ const startCountdown = () => {
 }
 
 const completeTask = () => {
+  // Clear saved progress when task is completed
+  clearProgress()
   emit('taskComplete', answers.value)
 }
 
@@ -916,6 +970,8 @@ const nextQuestion = () => {
     hasAnsweredCurrentQuestion.value = false
     isShowingFeedback.value = false
     feedbackState.value = null
+    // Save progress when moving to next question
+    saveProgress()
   }
 }
 
@@ -940,8 +996,94 @@ const onImageError = (event: Event) => {
   console.error('Failed to load image in modal:', event)
 }
 
+// Progress persistence functions
+const saveProgress = async () => {
+  if (!currentAssessment.value?.id) {
+    return
+  }
+
+  try {
+    const progress = {
+      current_question_index: currentQuestionIndex.value,
+      time_left: timeLeft.value,
+      answers: answers.value,
+      updated_at: new Date().toISOString(),
+    }
+    await saveTaskProgress(currentAssessment.value.id, props.task.id, progress)
+  } catch (error) {
+    console.error('Failed to save task progress:', error)
+  }
+}
+
+const loadProgress = async () => {
+  if (!currentAssessment.value?.id) {
+    return false
+  }
+
+  try {
+    const progress = await loadTaskProgress(currentAssessment.value.id, props.task.id)
+
+    if (progress) {
+      currentQuestionIndex.value = progress.current_question_index
+      timeLeft.value = progress.time_left
+      answers.value = progress.answers
+      progressRestored.value = true
+
+      // Update hasAnsweredCurrentQuestion if current question was already answered
+      if (answers.value[currentQuestion.value.id]) {
+        hasAnsweredCurrentQuestion.value = true
+      }
+
+      console.log(
+        `Restored progress for Task ${props.task.id}: Question ${currentQuestionIndex.value + 1}/${props.task.questions.length}, Time: ${formatTime(timeLeft.value)}`,
+      )
+      return true
+    }
+  } catch (error) {
+    console.error('Failed to load task progress:', error)
+  }
+  return false
+}
+
+const clearProgress = async () => {
+  if (!currentAssessment.value?.id) {
+    return
+  }
+
+  try {
+    await clearTaskProgress(currentAssessment.value.id, props.task.id)
+  } catch (error) {
+    console.error('Failed to clear task progress:', error)
+  }
+}
+
+const restartTask = async () => {
+  // Clear all progress and reset to initial state
+  await clearProgress()
+  currentQuestionIndex.value = 0
+  timeLeft.value = props.task.time_limit_seconds
+  answers.value = {}
+  hasAnsweredCurrentQuestion.value = false
+  isShowingFeedback.value = false
+  feedbackState.value = null
+  progressRestored.value = false
+
+  // Stop and restart the timer
+  stopTimer()
+  startTimer()
+
+  console.log(`Task ${props.task.id} restarted`)
+}
+
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
+  // Try to load saved progress first
+  const progressLoaded = await loadProgress()
+
+  if (progressLoaded) {
+    console.log(`Resuming Task ${props.task.id} from saved progress`)
+  }
+
   startTimer()
   initializeAudio()
 })
