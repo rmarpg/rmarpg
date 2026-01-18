@@ -98,7 +98,7 @@ export const adminGuard = async (
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('is_admin')
+      .select('first_name')
       .eq('id', uid)
       .single()
     if (error) {
@@ -106,7 +106,7 @@ export const adminGuard = async (
       next('/welcome')
       return
     }
-    if (!data?.is_admin) {
+    if (data?.first_name !== 'Administrator') {
       next('/welcome')
       return
     }

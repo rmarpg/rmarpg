@@ -24,10 +24,10 @@ const loadAdminFlag = async () => {
     }
     const { data } = await supabase
       .from('profiles')
-      .select('is_admin')
+      .select('first_name')
       .eq('id', user.value.id)
       .single()
-    isAdmin.value = !!data?.is_admin
+    isAdmin.value = data?.first_name === 'Administrator'
   } catch {
     isAdmin.value = false
   }
