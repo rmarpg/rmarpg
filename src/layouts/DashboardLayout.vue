@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuth } from '@/composables/useAuth'
-import { supabase } from '@/lib/supabase-client'
 import { useRoute } from 'vue-router'
 
 const sidebarOpen = ref(false) // Default to closed on mobile
 const isMobile = ref(false)
-const { logout, user } = useAuth()
+const { logout } = useAuth()
 const route = useRoute()
 
 // Computed properties for active states
@@ -14,24 +13,6 @@ const isScoresheet = computed(() => route.path === '/scoresheet')
 const isSummary = computed(() => route.path === '/summary')
 const isGraph = computed(() => route.path === '/graph')
 const isAdminRetry = computed(() => route.path === '/admin/retry-requests')
-
-const isAdmin = ref(false)
-const loadAdminFlag = async () => {
-  try {
-    if (!user.value) {
-      isAdmin.value = false
-      return
-    }
-    const { data } = await supabase
-      .from('profiles')
-      .select('first_name')
-      .eq('id', user.value.id)
-      .single()
-    isAdmin.value = data?.first_name === 'Administrator'
-  } catch {
-    isAdmin.value = false
-  }
-}
 
 const checkIsMobile = () => {
   isMobile.value = window.innerWidth < 1024 // lg breakpoint
@@ -57,11 +38,6 @@ const closeSidebarOnMobile = () => {
 onMounted(() => {
   checkIsMobile()
   window.addEventListener('resize', checkIsMobile)
-  loadAdminFlag()
-})
-
-watch(user, () => {
-  loadAdminFlag()
 })
 
 onUnmounted(() => {
@@ -190,7 +166,6 @@ onUnmounted(() => {
         </RouterLink>
 
         <RouterLink
-          v-if="isAdmin"
           to="/admin/retry-requests"
           @click="closeSidebarOnMobile"
           :class="[
