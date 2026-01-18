@@ -996,11 +996,62 @@ const onImageError = (event: Event) => {
   console.error('Failed to load image in modal:', event)
 }
 
+// Local storage key for timer state
+const getLocalStorageKey = () => {
+  return `task_${props.task.id}_timer_${currentAssessment.value?.id || 'unknown'}`
+}
+
+// Local storage for timer backup
+const saveTimerToLocalStorage = () => {
+  try {
+    const key = getLocalStorageKey()
+    const timerData = {
+      timeLeft: timeLeft.value,
+      currentQuestionIndex: currentQuestionIndex.value,
+      answers: answers.value,
+      timestamp: Date.now(),
+    }
+    localStorage.setItem(key, JSON.stringify(timerData))
+  } catch (error) {
+    console.warn('Failed to save timer to localStorage:', error)
+  }
+}
+
+const loadTimerFromLocalStorage = () => {
+  try {
+    const key = getLocalStorageKey()
+    const data = localStorage.getItem(key)
+    if (data) {
+      const timerData = JSON.parse(data)
+      // Only restore if data is less than 1 hour old
+      const ageMs = Date.now() - timerData.timestamp
+      if (ageMs < 3600000) {
+        return timerData
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load timer from localStorage:', error)
+  }
+  return null
+}
+
+const clearTimerFromLocalStorage = () => {
+  try {
+    const key = getLocalStorageKey()
+    localStorage.removeItem(key)
+  } catch (error) {
+    console.warn('Failed to clear timer from localStorage:', error)
+  }
+}
+
 // Progress persistence functions
 const saveProgress = async () => {
   if (!currentAssessment.value?.id) {
     return
   }
+
+  // Always save timer to localStorage as fast backup
+  saveTimerToLocalStorage()
 
   try {
     const progress = {
@@ -1011,7 +1062,7 @@ const saveProgress = async () => {
     }
     await saveTaskProgress(currentAssessment.value.id, props.task.id, progress)
   } catch (error) {
-    console.error('Failed to save task progress:', error)
+    console.error('Failed to save task progress to database:', error)
   }
 }
 
@@ -1020,6 +1071,7 @@ const loadProgress = async () => {
     return false
   }
 
+  // Try database first
   try {
     const progress = await loadTaskProgress(currentAssessment.value.id, props.task.id)
 
@@ -1028,6 +1080,7 @@ const loadProgress = async () => {
       timeLeft.value = progress.time_left
       answers.value = progress.answers
       progressRestored.value = true
+      clearTimerFromLocalStorage() // Clear local storage on successful DB load
 
       // Update hasAnsweredCurrentQuestion if current question was already answered
       if (answers.value[currentQuestion.value.id]) {
@@ -1035,13 +1088,32 @@ const loadProgress = async () => {
       }
 
       console.log(
-        `Restored progress for Task ${props.task.id}: Question ${currentQuestionIndex.value + 1}/${props.task.questions.length}, Time: ${formatTime(timeLeft.value)}`,
+        `Restored progress for Task ${props.task.id}: Question ${currentQuestionIndex.value + 1}/${props.task.questions.length}, Time: ${formatTime(timeLeft.value)} (from database)`,
       )
       return true
     }
   } catch (error) {
-    console.error('Failed to load task progress:', error)
+    console.error('Failed to load task progress from database:', error)
   }
+
+  // Fallback to localStorage if database fails
+  const localData = loadTimerFromLocalStorage()
+  if (localData) {
+    currentQuestionIndex.value = localData.currentQuestionIndex
+    timeLeft.value = localData.timeLeft
+    answers.value = localData.answers
+    progressRestored.value = true
+
+    if (answers.value[currentQuestion.value.id]) {
+      hasAnsweredCurrentQuestion.value = true
+    }
+
+    console.log(
+      `Restored progress for Task ${props.task.id}: Question ${currentQuestionIndex.value + 1}/${props.task.questions.length}, Time: ${formatTime(timeLeft.value)} (from localStorage)`,
+    )
+    return true
+  }
+
   return false
 }
 
@@ -1050,10 +1122,13 @@ const clearProgress = async () => {
     return
   }
 
+  // Clear both database and localStorage
+  clearTimerFromLocalStorage()
+
   try {
     await clearTaskProgress(currentAssessment.value.id, props.task.id)
   } catch (error) {
-    console.error('Failed to clear task progress:', error)
+    console.error('Failed to clear task progress from database:', error)
   }
 }
 
