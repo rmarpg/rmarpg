@@ -24,6 +24,7 @@ const startBlockReason = ref<string>('')
 const requestStatus = ref<'none' | 'pending' | 'approved' | 'denied'>('none')
 const requesting = ref(false)
 const hasOngoingAssessment = ref(false)
+const isLoading = ref(true)
 
 const checkPerfectScore = async () => {
   if (!user.value) {
@@ -60,12 +61,14 @@ watch(user, () => {
 })
 
 const refreshStartPermission = async () => {
+  isLoading.value = true
   if (!user.value) {
     attempts.value = 0
     canStart.value = false
     startBlockReason.value = 'Please login to start the assessment.'
     requestStatus.value = 'none'
     hasOngoingAssessment.value = false
+    isLoading.value = false
     return
   }
 
@@ -95,6 +98,7 @@ const refreshStartPermission = async () => {
   } catch {
     requestStatus.value = 'none'
   }
+  isLoading.value = false
 }
 
 const startAssessment = async () => {
@@ -149,10 +153,10 @@ const requestExtra = async () => {
                     : "Let's do this!"
               }}
             </Button>
-            <div v-if="!canStart" class="mt-3 text-xs text-white/80">
+            <div v-if="!isLoading && !canStart" class="mt-3 text-xs text-white/80">
               {{ startBlockReason }}
             </div>
-            <div v-if="!canStart" class="mt-4 flex items-center justify-center gap-2">
+            <div v-if="!isLoading && !canStart" class="mt-4 flex items-center justify-center gap-2">
               <Button
                 class="px-4 py-2"
                 variant="secondary"
