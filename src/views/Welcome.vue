@@ -147,6 +147,7 @@ const requestExtra = async () => {
 
           <div class="mt-6 sm:mt-8">
             <Button
+              v-cloak
               class="w-full px-6 py-3 text-base sm:w-auto"
               :disabled="!canStart && !hasOngoingAssessment"
               @click="startAssessment"
