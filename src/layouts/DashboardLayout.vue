@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { supabase } from '@/lib/supabase-client'
 import { useRoute } from 'vue-router'
@@ -16,6 +16,22 @@ const isGraph = computed(() => route.path === '/graph')
 const isAdminRetry = computed(() => route.path === '/admin/retry-requests')
 
 const isAdmin = ref(false)
+const loadAdminFlag = async () => {
+  try {
+    if (!user.value) {
+      isAdmin.value = false
+      return
+    }
+    const { data } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.value.id)
+      .single()
+    isAdmin.value = !!data?.is_admin
+  } catch {
+    isAdmin.value = false
+  }
+}
 
 const checkIsMobile = () => {
   isMobile.value = window.innerWidth < 1024 // lg breakpoint
@@ -41,21 +57,11 @@ const closeSidebarOnMobile = () => {
 onMounted(() => {
   checkIsMobile()
   window.addEventListener('resize', checkIsMobile)
-  // Fetch admin flag
-  const fetchAdmin = async () => {
-    try {
-      if (!user.value) return
-      const { data } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.value.id)
-        .single()
-      isAdmin.value = !!data?.is_admin
-    } catch {
-      isAdmin.value = false
-    }
-  }
-  fetchAdmin()
+  loadAdminFlag()
+})
+
+watch(user, () => {
+  loadAdminFlag()
 })
 
 onUnmounted(() => {
