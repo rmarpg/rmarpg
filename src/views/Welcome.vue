@@ -125,6 +125,12 @@ const requestExtra = async () => {
 }
 </script>
 
+<style scoped>
+[v-cloak] {
+  display: none;
+}
+</style>
+
 <template>
   <RMALayout>
     <div class="mt-4 grid gap-6 sm:mt-8 sm:gap-8 lg:grid-cols-2">
@@ -153,10 +159,10 @@ const requestExtra = async () => {
                     : "Let's do this!"
               }}
             </Button>
-            <div v-if="!isLoading && !canStart" class="mt-3 text-xs text-white/80">
+            <div v-cloak v-if="!isLoading && !canStart" class="mt-3 text-xs text-white/80">
               {{ startBlockReason }}
             </div>
-            <div v-if="!isLoading && !canStart" class="mt-4 flex items-center justify-center gap-2">
+            <div v-cloak v-if="!isLoading && !canStart" class="mt-4 flex items-center justify-center gap-2">
               <Button
                 class="px-4 py-2"
                 variant="secondary"
