@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase-client'
 import { ref } from 'vue'
 import type { User } from '@supabase/supabase-js'
+import rma from '@/data/rma.json'
 
 export interface TaskProgress {
   current_question_index: number
@@ -207,6 +208,16 @@ export function useAssessment() {
     }
   }
 
+  // Compute maximum possible total from assessment definition
+  const MAX_POSSIBLE_TOTAL = (() => {
+    try {
+      return (rma as any).assessment.tasks.reduce((sum: number, t: any) => sum + (Number(t.points) || 0), 0)
+    } catch (err) {
+      console.warn('Failed to compute MAX_POSSIBLE_TOTAL from rma.json, falling back to 1100', err)
+      return 1100
+    }
+  })()
+
   const updateTaskScore = async (taskName: string, score: number): Promise<boolean> => {
     if (!currentAssessment.value?.id) {
       console.error('No current assessment found')
@@ -240,7 +251,7 @@ export function useAssessment() {
         (sum: number, score: any) => sum + (Number(score) || 0),
         0,
       )
-      const overallScore = (totalScore / 1100) * 100 // 11 tasks × 100 points each = 1100 max possible score
+      const overallScore = (totalScore / MAX_POSSIBLE_TOTAL) * 100
 
       updateData.total_score = totalScore
       updateData.overall_score = parseFloat(overallScore.toFixed(2))
