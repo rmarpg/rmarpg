@@ -28,7 +28,8 @@ const fetchAssessments = async () => {
         *,
         profiles!learner_id (
           first_name,
-          last_name
+          last_name,
+          section
         )
       `,
       )
@@ -40,8 +41,16 @@ const fetchAssessments = async () => {
       return
     }
 
-    assessments.value = data || []
-    console.log('Fetched assessments:', assessments.value)
+    // If a section is selected, filter client-side using the joined profile.section
+    const items = (data || []).filter((a: any) => {
+      if (!selectedSection.value) return true
+      const profileSection = (a as any)?.profiles?.section
+      if (!profileSection) return false
+      return profileSection.toString().toLowerCase() === selectedSection.value.toLowerCase()
+    })
+
+    assessments.value = items
+    console.log('Fetched assessments (filtered):', assessments.value)
   } catch (error) {
     console.error('Error fetching assessments:', error)
   }
@@ -70,6 +79,13 @@ const getLearnerName = (assessment: Assessment) => {
     return profile.first_name
   }
   return `User ${assessment.learner_id.slice(0, 8)}...`
+}
+
+// Get section from joined profile or fallback
+const getSection = (assessment: Assessment) => {
+  const profile = (assessment as any).profiles
+  if (!profile) return '—'
+  return profile.section || '—'
 }
 
 onMounted(async () => {
@@ -133,6 +149,7 @@ watch(selectedSection, async () => {
                   <h3 class="font-semibold text-gray-900">{{ getLearnerName(assessment) }}</h3>
                   <p class="text-sm text-gray-600">S/N: {{ index + 1 }}</p>
                   <p class="text-sm text-gray-600">Grade {{ assessment.grade_level }}</p>
+                  <p class="text-sm text-gray-600">Section: {{ getSection(assessment) }}</p>
                   <p class="text-sm text-gray-600">{{ formatDate(assessment.assessment_date) }}</p>
                 </div>
                 <div class="text-right">
@@ -406,9 +423,9 @@ watch(selectedSection, async () => {
                 <td class="border border-gray-300 px-2 py-3 text-center text-xs lg:px-3 lg:text-sm">
                   {{ assessment.grade_level }}
                 </td>
-                <td
-                  class="border border-gray-300 px-2 py-3 text-center text-xs lg:px-3 lg:text-sm"
-                ></td>
+                <td class="border border-gray-300 px-2 py-3 text-center text-xs lg:px-3 lg:text-sm">
+                  {{ getSection(assessment) }}
+                </td>
                 <td class="border border-gray-300 px-2 py-3 text-xs lg:px-3 lg:text-sm">
                   {{ formatDate(assessment.assessment_date) }}
                 </td>
