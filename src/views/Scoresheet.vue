@@ -7,25 +7,20 @@ import SelectValue from '@/components/ui/select/SelectValue.vue'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { useAssessment, type Assessment } from '@/composables/useAssessment'
 import { useAuth } from '@/composables/useAuth'
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { supabase } from '@/lib/supabase-client'
 
-const selectedGrade = ref('grade_2')
+const selectedSection = ref('Rose')
+const GRADE_LEVEL = 2
 const { user, loading: authLoading } = useAuth()
 const { loading: assessmentLoading } = useAssessment()
 const assessments = ref<Assessment[]>([])
 
-// Computed property to get the selected grade number
-const selectedGradeNumber = computed(() => {
-  return parseInt(selectedGrade.value.replace('grade_', ''))
-})
-
-// Fetch all assessments for the selected grade
+// Fetch all assessments for grade level 2
 const fetchAssessments = async () => {
   if (assessmentLoading.value) return
 
   try {
-    // Try to join with profiles table through the shared auth.users.id reference
     const { data, error } = await supabase
       .from('assessments')
       .select(
@@ -37,7 +32,7 @@ const fetchAssessments = async () => {
         )
       `,
       )
-      .eq('grade_level', selectedGradeNumber.value)
+      .eq('grade_level', GRADE_LEVEL)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -90,9 +85,8 @@ watch(authLoading, async (isLoading) => {
   }
 })
 
-// Watch for grade changes
-import { watch } from 'vue'
-watch(selectedGrade, async () => {
+// Watch for section changes (no grade change; still fetch same grade)
+watch(selectedSection, async () => {
   await fetchAssessments()
 })
 </script>
@@ -103,19 +97,15 @@ watch(selectedGrade, async () => {
       <!-- Header Section -->
       <header class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
         <h2 class="text-xl font-semibold text-neutral-800 sm:text-2xl">
-          Grade {{ selectedGradeNumber }}
+          Grade 2
         </h2>
-        <Select v-model="selectedGrade" class="w-full sm:w-auto">
+        <Select v-model="selectedSection" class="w-full sm:w-auto">
           <SelectTrigger class="min-w-[140px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="grade_1">Grade 1</SelectItem>
-            <SelectItem value="grade_2">Grade 2</SelectItem>
-            <SelectItem value="grade_3">Grade 3</SelectItem>
-            <SelectItem value="grade_4">Grade 4</SelectItem>
-            <SelectItem value="grade_5">Grade 5</SelectItem>
-            <SelectItem value="grade_6">Grade 6</SelectItem>
+            <SelectItem value="Rose">Rose</SelectItem>
+            <SelectItem value="Sampaguita">Sampaguita</SelectItem>
           </SelectContent>
         </Select>
       </header>
@@ -127,7 +117,7 @@ watch(selectedGrade, async () => {
         </div>
 
         <div v-else-if="assessments.length === 0" class="py-12 text-center">
-          <p class="text-gray-600">No assessments found for Grade {{ selectedGradeNumber }}</p>
+          <p class="text-gray-600">No assessments found for Grade 2</p>
         </div>
 
         <div v-else class="overflow-x-auto">
