@@ -1,7 +1,7 @@
-import { supabase } from '@/lib/supabase-client'
-import { ref } from 'vue'
-import type { User } from '@supabase/supabase-js'
 import rma from '@/data/rma.json'
+import { supabase } from '@/lib/supabase-client'
+import type { User } from '@supabase/supabase-js'
+import { ref } from 'vue'
 
 export interface TaskProgress {
   current_question_index: number
@@ -33,6 +33,43 @@ export interface Assessment {
   updated_at?: string
 }
 
+/* Typed shapes to avoid `any` and improve safety */
+export interface RetryRequest {
+  id: string
+  learner_id: string
+  status: 'pending' | 'approved' | 'rejected'
+  used: boolean
+  reason?: string | null
+  created_at?: string
+  used_at?: string | null
+}
+
+export interface RmaQuestion {
+  id: string
+  prompt?: string
+  type?: string
+  answer?: string | number
+  possible_answers?: Array<string | number>
+}
+
+export interface RmaTask {
+  id: string
+  name?: string
+  points: number
+  time_limit_seconds?: number
+  questions?: RmaQuestion[]
+}
+
+export interface Rma {
+  assessment: {
+    title?: string
+    grade_level?: number
+    version?: string
+    instructions?: string
+    tasks: RmaTask[]
+  }
+}
+
 export function useAssessment() {
   const loading = ref(false)
   const currentAssessment = ref<Assessment | null>(null)
@@ -59,10 +96,10 @@ export function useAssessment() {
   }
 
   // Internal helper: fetch an approved, unused retry request if exists
-  const getApprovedRetryRequest = async (user: User): Promise<any | null> => {
+  const getApprovedRetryRequest = async (user: User): Promise<RetryRequest | null> => {
     if (!user?.id) return null
     try {
-      const { data, error } = await supabase
+      const res = await supabase
         .from('assessment_retry_requests')
         .select('*')
         .eq('learner_id', user.id)
@@ -72,12 +109,12 @@ export function useAssessment() {
         .limit(1)
         .maybeSingle()
 
-      if (error) {
+      if (res.error) {
         // Table may not exist yet or permission denied; log and continue
-        console.warn('Retry request lookup failed (ensure table exists):', error)
+        console.warn('Retry request lookup failed (ensure table exists):', res.error)
         return null
       }
-      return data || null
+      return (res.data as RetryRequest) || null
     } catch (err) {
       console.error('Unexpected error fetching retry request:', err)
       return null
@@ -85,7 +122,9 @@ export function useAssessment() {
   }
 
   // Public: can the user start a new assessment now?
-  const canStartAssessment = async (user: User): Promise<{
+  const canStartAssessment = async (
+    user: User,
+  ): Promise<{
     allowed: boolean
     reason?: string
     approvedRequestId?: string
@@ -128,9 +167,10 @@ export function useAssessment() {
         return { success: false, error: error.message }
       }
       return { success: true, status: data.status }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Unexpected error creating retry request:', err)
-      return { success: false, error: err?.message || 'Unknown error' }
+      const message = err instanceof Error ? err.message : String(err)
+      return { success: false, error: message || 'Unknown error' }
     }
   }
 
@@ -211,12 +251,24 @@ export function useAssessment() {
   // Compute maximum possible total from assessment definition
   const MAX_POSSIBLE_TOTAL = (() => {
     try {
-      return (rma as any).assessment.tasks.reduce((sum: number, t: any) => sum + (Number(t.points) || 0), 0)
+      return (rma as unknown as Rma).assessment.tasks.reduce(
+        (sum: number, t: RmaTask) => sum + (Number(t.points) || 0),
+        0,
+      )
     } catch (err) {
       console.warn('Failed to compute MAX_POSSIBLE_TOTAL from rma.json, falling back to 1100', err)
       return 1100
     }
   })()
+
+  // helper: safely read numeric fields from an Assessment
+  const getNumericAssessmentValue = (a: Assessment | null, key: keyof Assessment): number => {
+    if (!a) return 0
+    const raw = (a as unknown as Record<string, unknown>)[key]
+    if (typeof raw === 'number') return raw
+    const n = Number(raw)
+    return Number.isFinite(n) ? n : 0
+  }
 
   const updateTaskScore = async (taskName: string, score: number): Promise<boolean> => {
     if (!currentAssessment.value?.id) {
@@ -224,37 +276,53 @@ export function useAssessment() {
       return false
     }
 
+    // runtime key (narrowed to a keyof Assessment for safety)
+    const scoreKey = `task_${taskName.toLowerCase()}_score` as keyof Assessment
+
     loading.value = true
     try {
-      const updateData: Partial<Assessment> = {
-        [`task_${taskName.toLowerCase()}_score`]: score,
+      const updateData: Partial<Assessment> & Record<string, unknown> = {
         updated_at: new Date().toISOString(),
       }
+      updateData[scoreKey as string] = score
 
-      // Calculate new total score
-      const currentScores = {
-        task_a_score: currentAssessment.value.task_a_score,
-        task_b_score: currentAssessment.value.task_b_score,
-        task_c_score: currentAssessment.value.task_c_score,
-        task_d_score: currentAssessment.value.task_d_score,
-        task_e_score: currentAssessment.value.task_e_score,
-        task_f_score: currentAssessment.value.task_f_score,
-        task_g_score: currentAssessment.value.task_g_score,
-        task_h_score: currentAssessment.value.task_h_score,
-        task_i_score: currentAssessment.value.task_i_score,
-        task_j_score: currentAssessment.value.task_j_score,
-        task_k_score: currentAssessment.value.task_k_score,
-        [`task_${taskName.toLowerCase()}_score`]: score,
+      // list the known score keys and compute a new total safely
+      const scoreKeys: Array<keyof Assessment> = [
+        'task_a_score',
+        'task_b_score',
+        'task_c_score',
+        'task_d_score',
+        'task_e_score',
+        'task_f_score',
+        'task_g_score',
+        'task_h_score',
+        'task_i_score',
+        'task_j_score',
+        'task_k_score',
+      ]
+
+      let totalScore = scoreKeys.reduce((sum, key) => {
+        const val =
+          key === scoreKey ? score : getNumericAssessmentValue(currentAssessment.value, key)
+        return sum + val
+      }, 0)
+
+      // Defensive: clamp totalScore to the declared maximum (prevents >100% due to rounding or upstream bugs)
+      if (totalScore > MAX_POSSIBLE_TOTAL) {
+        console.warn('Computed total_score exceeds MAX_POSSIBLE_TOTAL — clamping.', {
+          totalScore,
+          MAX_POSSIBLE_TOTAL,
+          assessmentId: currentAssessment.value?.id,
+        })
+        totalScore = MAX_POSSIBLE_TOTAL
       }
 
-      const totalScore = Object.values(currentScores).reduce(
-        (sum: number, score: any) => sum + (Number(score) || 0),
-        0,
-      )
-      const overallScore = (totalScore / MAX_POSSIBLE_TOTAL) * 100
+      let overallScore = (totalScore / MAX_POSSIBLE_TOTAL) * 100
+      // Defensive: ensure overallScore never exceeds 100 (floating point / rounding safety)
+      overallScore = Math.min(Number(overallScore.toFixed(2)), 100)
 
       updateData.total_score = totalScore
-      updateData.overall_score = parseFloat(overallScore.toFixed(2))
+      updateData.overall_score = overallScore
 
       const { data, error } = await supabase
         .from('assessments')
@@ -354,7 +422,7 @@ export function useAssessment() {
     // Ensure currentAssessment is set regardless of which path we took
     if (assessment) {
       currentAssessment.value = assessment
-      console.log('currentAssessment.value set to:', currentAssessment.value.id)
+      console.log('currentAssessment.value set to:', assessment.id)
     }
 
     return assessment
@@ -362,9 +430,11 @@ export function useAssessment() {
 
   const calculateTaskScore = (
     answers: Record<string, string>,
-    questions: any[],
+    questions: RmaQuestion[],
     maxPoints: number,
   ): number => {
+    if (!questions || questions.length === 0) return 0
+
     let correctAnswers = 0
 
     questions.forEach((question) => {
@@ -373,13 +443,15 @@ export function useAssessment() {
       if (
         userAns !== undefined &&
         correctAns !== undefined &&
-        userAns.toString().toLowerCase().trim() === correctAns.toString().toLowerCase().trim()
+        userAns.toString().toLowerCase().trim() ===
+          String(correctAns).toString().toLowerCase().trim()
       ) {
         correctAnswers++
       }
     })
 
-    return Math.round((correctAnswers / questions.length) * maxPoints)
+    // Never return more than the configured maxPoints (defensive)
+    return Math.min(Math.round((correctAnswers / questions.length) * maxPoints), maxPoints)
   }
 
   const saveTaskProgress = async (
@@ -421,18 +493,19 @@ export function useAssessment() {
     try {
       const columnName = `task_${taskId.toLowerCase()}_progress`
 
-      const { data, error } = await supabase
+      const res = await supabase
         .from('assessments')
         .select(columnName)
         .eq('id', assessmentId)
         .single()
 
-      if (error) {
-        console.error('Error loading task progress:', error)
+      if (res.error) {
+        console.error('Error loading task progress:', res.error)
         return null
       }
 
-      const progress = (data as any)?.[columnName] as TaskProgress | null
+      const progress =
+        (res.data as unknown as Record<string, TaskProgress | null>)[columnName] ?? null
 
       // Check if progress exists and is recent (within 24 hours)
       if (progress && progress.updated_at) {
