@@ -10,29 +10,6 @@ export interface TaskProgress {
   updated_at: string
 }
 
-export interface Assessment {
-  id?: string
-  learner_id: string
-  grade_level: number
-  assessment_date: string
-  task_a_score: number
-  task_b_score: number
-  task_c_score: number
-  task_d_score: number
-  task_e_score: number
-  task_f_score: number
-  task_g_score: number
-  task_h_score: number
-  task_i_score: number
-  task_j_score: number
-  task_k_score: number
-  total_score: number
-  overall_score: number
-  completed_at?: string | null
-  created_at?: string
-  updated_at?: string
-}
-
 /* Typed shapes to avoid `any` and improve safety */
 export interface RetryRequest {
   id: string
@@ -58,6 +35,30 @@ export interface RmaTask {
   points: number
   time_limit_seconds?: number
   questions?: RmaQuestion[]
+}
+
+
+export interface Assessment {
+  id?: string
+  learner_id: string
+  grade_level: number
+  assessment_date: string
+  task_a_score: number
+  task_b_score: number
+  task_c_score: number
+  task_d_score: number
+  task_e_score: number
+  task_f_score: number
+  task_g_score: number
+  task_h_score: number
+  task_i_score: number
+  task_j_score: number
+  task_k_score: number
+  total_score: number
+  overall_score: number
+  completed_at?: string | null
+  created_at?: string
+  updated_at?: string
 }
 
 export interface Rma {
@@ -280,76 +281,58 @@ export function useAssessment() {
       return false
     }
 
-    // runtime key (narrowed to a keyof Assessment for safety)
-    const scoreKey = `task_${taskName.toLowerCase()}_score` as keyof Assessment
-
     loading.value = true
     try {
-      // Normalize incoming score (calculated against rma.json `points`) to the
-      // DB scale (0..TASK_MAX_SCORE) before saving. This keeps stored task_*_score
-      // values consistent across tasks.
+      const assessmentId = currentAssessment.value.id
+      // Normalize incoming score to DB scale (0..TASK_MAX_SCORE)
       const rawScore = Number(score)
-      let storeScore = rawScore
+      const storeScore = Number.isFinite(rawScore) ? Math.max(0, Math.min(TASK_MAX_SCORE, Math.round(rawScore))) : 0
 
-      try {
-        const taskDef = ((rma as any).assessment.tasks || []).find(
-          (t: any) => String(t.id).toUpperCase() === String(taskName).toUpperCase(),
-        )
-        const taskPoints = Number(taskDef?.points) || null
-        if (taskPoints && taskPoints > 0 && taskPoints !== TASK_MAX_SCORE) {
-          storeScore = Math.round((rawScore / taskPoints) * TASK_MAX_SCORE)
-        }
-      } catch (err) {
-        console.warn('Failed to normalize task score to 0-40 scale:', err)
-        storeScore = rawScore
-      }
-
-      const updateData: Partial<Assessment> = {
-        [`task_${taskName.toLowerCase()}_score`]: storeScore,
+      // Upsert into assessment_task_scores
+      const taskKey = taskName.toUpperCase()
+      const upsertPayload = {
+        assessment_id: assessmentId,
+        task: taskKey,
+        score: storeScore,
         updated_at: new Date().toISOString(),
       }
 
-      // Calculate new total score using the normalized storeScore
-      const currentScores = {
-        task_a_score: currentAssessment.value.task_a_score,
-        task_b_score: currentAssessment.value.task_b_score,
-        task_c_score: currentAssessment.value.task_c_score,
-        task_d_score: currentAssessment.value.task_d_score,
-        task_e_score: currentAssessment.value.task_e_score,
-        task_f_score: currentAssessment.value.task_f_score,
-        task_g_score: currentAssessment.value.task_g_score,
-        task_h_score: currentAssessment.value.task_h_score,
-        task_i_score: currentAssessment.value.task_i_score,
-        task_j_score: currentAssessment.value.task_j_score,
-        task_k_score: currentAssessment.value.task_k_score,
-        [`task_${taskName.toLowerCase()}_score`]: storeScore,
-      }
-
-      const totalScore = Object.values(currentScores).reduce(
-        (sum: number, score: any) => sum + (Number(score) || 0),
-        0,
-      )
-      const overallScore = (totalScore / MAX_POSSIBLE_TOTAL) * 100
-
-      updateData.total_score = totalScore
-      updateData.overall_score = overallScore
-
-      const { data, error } = await supabase
-        .from('assessments')
-        .update(updateData)
-        .eq('id', currentAssessment.value.id)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Error updating task score:', error)
+      const { error: upsertError } = await supabase.from('assessment_task_scores').upsert(upsertPayload, { onConflict: 'assessment_id,task' })
+      if (upsertError) {
+        console.error('Failed to upsert assessment_task_scores:', upsertError)
         return false
       }
 
-      currentAssessment.value = data
+      // Recompute total by fetching all task scores for this assessment
+      const { data: scoresData, error: scoresError } = await supabase
+        .from('assessment_task_scores')
+        .select('score')
+        .eq('assessment_id', assessmentId)
+
+      if (scoresError) {
+        console.warn('Failed to fetch task scores for total recompute:', scoresError)
+      }
+
+      const totalScore = (scoresData || []).reduce((sum: number, row: any) => sum + (Number(row.score) || 0), 0)
+      const overallScore = (totalScore / MAX_POSSIBLE_TOTAL) * 100
+
+      // Persist totals back to assessments table
+      const { data: updatedAssessment, error: updateError } = await supabase
+        .from('assessments')
+        .update({ total_score: totalScore, overall_score: overallScore, updated_at: new Date().toISOString() })
+        .eq('id', assessmentId)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Failed to update assessment totals:', updateError)
+        return false
+      }
+
+      currentAssessment.value = updatedAssessment
       return true
-    } catch (error) {
-      console.error('Error updating task score:', error)
+    } catch (err) {
+      console.error('Error updating task score:', err)
       return false
     } finally {
       loading.value = false
@@ -471,18 +454,17 @@ export function useAssessment() {
   ): Promise<boolean> => {
     loading.value = true
     try {
-      const columnName = `task_${taskId.toLowerCase()}_progress`
+      const taskKey = taskId.toUpperCase()
+      const upsertPayload = {
+        assessment_id: assessmentId,
+        task: taskKey,
+        progress: progress,
+        updated_at: new Date().toISOString(),
+      }
 
-      const { error } = await supabase
-        .from('assessments')
-        .update({
-          [columnName]: progress,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', assessmentId)
-
+      const { error } = await supabase.from('assessment_task_scores').upsert(upsertPayload, { onConflict: 'assessment_id,task' })
       if (error) {
-        console.error('Error saving task progress:', error)
+        console.error('Error upserting task progress:', error)
         return false
       }
 
@@ -501,33 +483,25 @@ export function useAssessment() {
   ): Promise<TaskProgress | null> => {
     loading.value = true
     try {
-      const columnName = `task_${taskId.toLowerCase()}_progress`
+      const taskKey = taskId.toUpperCase()
+      const { data, error } = await supabase
+        .from('assessment_task_scores')
+        .select('progress')
+        .eq('assessment_id', assessmentId)
+        .eq('task', taskKey)
+        .maybeSingle()
 
-      const res = await supabase
-        .from('assessments')
-        .select(columnName)
-        .eq('id', assessmentId)
-        .single()
-
-      if (res.error) {
-        console.error('Error loading task progress:', res.error)
+      if (error) {
+        console.error('Error fetching task progress from assessment_task_scores:', error)
         return null
       }
 
-      const progress =
-        (res.data as unknown as Record<string, TaskProgress | null>)[columnName] ?? null
-
-      // Check if progress exists and is recent (within 24 hours)
+      const progress = (data as any)?.progress ?? null
       if (progress && progress.updated_at) {
-        const progressDate = new Date(progress.updated_at)
-        const hoursSinceUpdate = (Date.now() - progressDate.getTime()) / (1000 * 60 * 60)
-
-        if (hoursSinceUpdate < 24) {
-          return progress
-        } else {
-          // Clear old progress
-          await clearTaskProgress(assessmentId, taskId)
-        }
+        const updatedAt = new Date(progress.updated_at)
+        const ageMs = Date.now() - updatedAt.getTime()
+        // Only return recent progress (within 24h)
+        if (ageMs <= 24 * 60 * 60 * 1000) return progress as TaskProgress
       }
 
       return null
