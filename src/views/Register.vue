@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -67,23 +68,35 @@ const register = async (e: Event) => {
         <form @submit.prevent="register" method="post">
           <div class="grid gap-2">
             <Label for="first_name">First name</Label>
-            <Input type="text" name="first_name" id="first_name" required />
+            <Input
+              type="text"
+              name="first_name"
+              id="first_name"
+              required
+              placeholder="First name"
+            />
           </div>
 
           <div class="mt-4 grid gap-2">
             <Label for="last_name">Last name</Label>
-            <Input type="text" name="last_name" id="last_name" required />
+            <Input type="text" name="last_name" id="last_name" required placeholder="Last name" />
           </div>
 
           <div class="mt-4 grid gap-2">
             <Label for="learner_id">Learner ID</Label>
-            <Input type="text" name="learner_id" id="learner_id" placeholder="e.g. LRN-12345678" required />
+            <Input
+              type="text"
+              name="learner_id"
+              id="learner_id"
+              placeholder="e.g. LRN-12345678"
+              required
+            />
           </div>
 
           <div class="mt-4 grid gap-2">
             <Label for="section">Section</Label>
             <Select v-model="section">
-              <SelectTrigger class="w-full">
+              <SelectTrigger class="w-full bg-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -121,18 +134,19 @@ const register = async (e: Event) => {
 
           <div class="mt-4 grid gap-2">
             <Label for="email">Email address</Label>
-            <Input type="email" name="email" id="email" autocomplete="username" required />
+            <Input
+              type="email"
+              name="email"
+              id="email"
+              autocomplete="username"
+              required
+              placeholder="Email address"
+            />
           </div>
 
           <div class="mt-4 grid gap-2">
             <Label for="password">Password</Label>
-            <Input
-              type="password"
-              name="password"
-              id="password"
-              autocomplete="current-password"
-              required
-            />
+            <PasswordInput name="password" id="password" placeholder="Password" required />
           </div>
 
           <Button variant="default" class="mt-4 w-full" :disabled="loading">Register</Button>

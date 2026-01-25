@@ -6,7 +6,6 @@
           question,
           onAnswer,
           feedbackState,
-          isShowingFeedback,
           hasAnsweredCurrentQuestion,
         }"
       >

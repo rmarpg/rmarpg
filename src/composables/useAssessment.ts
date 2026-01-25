@@ -1,4 +1,3 @@
-import rma from '@/data/rma.json'
 import { supabase } from '@/lib/supabase-client'
 import type { User } from '@supabase/supabase-js'
 import { ref } from 'vue'
@@ -252,19 +251,10 @@ export function useAssessment() {
     }
   }
 
-  // Scoring constants and maximum total. The DB stores each task score on a 0-40 scale.
-  // MAX_POSSIBLE_TOTAL is the number of tasks * TASK_MAX_SCORE so totals align
-  // with how scores are stored in the database.
-  const TASK_MAX_SCORE = 40
-  const MAX_POSSIBLE_TOTAL = (() => {
-    try {
-      const tasks = (rma as any).assessment.tasks || []
-      return tasks.length * TASK_MAX_SCORE
-    } catch (err) {
-      console.warn('Failed to compute MAX_POSSIBLE_TOTAL from rma.json, falling back to 1100', err)
-      return 1100
-    }
-  })()
+  // The perfect total is a static value (44) for reporting purposes.
+  // Individual task scores are stored on each task's native `points` scale.
+  // Totals are compared against `MAX_POSSIBLE_TOTAL` when computing overall percentage.
+  const MAX_POSSIBLE_TOTAL = 44
 
   // helper: safely read numeric fields from an Assessment
   const getNumericAssessmentValue = (a: Assessment | null, key: keyof Assessment): number => {
@@ -284,9 +274,9 @@ export function useAssessment() {
     loading.value = true
     try {
       const assessmentId = currentAssessment.value.id
-      // Normalize incoming score to DB scale (0..TASK_MAX_SCORE)
+      // Ensure incoming score is a non-negative integer on the task's points scale.
       const rawScore = Number(score)
-      const storeScore = Number.isFinite(rawScore) ? Math.max(0, Math.min(TASK_MAX_SCORE, Math.round(rawScore))) : 0
+      const storeScore = Number.isFinite(rawScore) ? Math.max(0, Math.floor(rawScore)) : 0
 
       // Upsert into assessment_task_scores
       const taskKey = taskName.toUpperCase()
@@ -444,7 +434,9 @@ export function useAssessment() {
     })
 
     // Never return more than the configured maxPoints (defensive)
-    return Math.min(Math.round((correctAnswers / questions.length) * maxPoints), maxPoints)
+    // Use floor so fractional per-subtask points (e.g., 3.5) do not round up to the
+    // next integer — preserves conservative scoring.
+    return Math.min(Math.floor((correctAnswers / questions.length) * maxPoints), maxPoints)
   }
 
   const saveTaskProgress = async (

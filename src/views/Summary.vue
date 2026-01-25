@@ -125,17 +125,31 @@
 import { ref, computed, onMounted, watch } from 'vue'
 // Charting removed: use students table instead of a pie chart
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
-import rma from '@/data/rma.json'
 // removed unused imports: useAuth, useAssessment, Assessment
 
 
 // `assessment` and the auth/assessment helpers were unused — removed to clean up.
-const tasks = (rma as any).assessment.tasks as Array<{ id: string; name: string; questions: any[] }>
+// `rma.json` retained in repo for storage but not imported at runtime.
+// Tasks are defined inline here so Summary doesn't depend on the JSON import.
+const tasks = [
+  { id: 'A', name: 'Number Identification', points: 4, questions: [ { id: 'A1', prompt: 'How do you read this number? (375)', type: 'short_answer', answer: 'Three hundred seventy-five' }, { id: 'A2', prompt: 'What is the place value of the digit 7 in this number?', type: 'short_answer', answer: 'Tens place' }, { id: 'A3', prompt: 'What is the value of the digit 7 in this number?', type: 'short_answer', answer: 'Seventy' }, { id: 'A4', prompt: 'What is the expanded form of this number?', type: 'short_answer', answer: '300 + 70 + 5' } ] },
+  { id: 'B', name: 'Number Discrimination', points: 1, questions: [ { id: 'B1', prompt: 'Find a three-digit number greater than 857, with digit 5 in the tens place.', type: 'numeric', possible_answers: [ '858','859','950','951','952','953','954','955','956','957','958','959' ] } ] },
+  { id: 'C', name: 'Missing Number in Patterns', points: 4, questions: [ { id: 'C1', prompt: '65, 60, 55, 50, __ , 40', type: 'numeric', answer: '45' }, { id: 'C2', prompt: '10, 13, 16, 19, 22, __', type: 'numeric', answer: '25' }, { id: 'C3', prompt: '450, 550, 650, __ , 850, 950', type: 'numeric', answer: '750' }, { id: 'C4', prompt: '350, 300, 250, 200, __ , 100', type: 'numeric', answer: '150' } ] },
+  { id: 'D', name: 'Missing Unit Fractions', points: 2, questions: [ { id: 'D1a', prompt: 'Fill in missing fraction between 1/10 and 1/7', type: 'short_answer', possible_answers: ['1/8','1/9'] }, { id: 'D1b', prompt: 'Fill in missing fraction between 1/4 and 1/2', type: 'short_answer', possible_answers: ['1/3','1/2'] } ] },
+  { id: 'E', name: 'Addition', points: 4, questions: [ { id: 'E1', prompt: 'Find the sum of the blocks representation (image shown).', type: 'numeric', answer: '355' }, { id: 'E2', prompt: 'Find the sum of the blocks representation (image shown).', type: 'numeric', answer: '282' }, { id: 'E3a', prompt: '152 + 234 = ?', type: 'numeric', answer: '386' }, { id: 'E3b', prompt: '457 + 36 = ?', type: 'numeric', answer: '493' } ] },
+  { id: 'F', name: 'Addition Word Problem', points: 1, questions: [ { id: 'F1', prompt: 'Grade 2 - Maya collected 128 bottles. Grade 2 – Agila collected 93 bottles. How many bottles were collected in all?', type: 'word_problem', answer: '221' } ] },
+  { id: 'G', name: 'Subtraction', points: 4, questions: [ { id: 'G1', prompt: 'Take away 14 mangoes from the picture of mangoes. How many are left?', type: 'numeric', answer: '21' }, { id: 'G2a', prompt: '92 - 21 = ?', type: 'numeric', answer: '71' }, { id: 'G2b', prompt: '137 - 75 = ?', type: 'numeric', answer: '62' }, { id: 'G2c', prompt: '396 - 178 = ?', type: 'numeric', answer: '218' } ] },
+  { id: 'H', name: 'Subtraction Word Problem', points: 2, questions: [ { id: 'H1', prompt: 'Jose harvested 125 mangoes. He gave 12 to his neighbor. How many were left?', type: 'word_problem', answer: '113' }, { id: 'H2', prompt: 'Carla bought clothes for P225.00. How much was her change if she gave P250.00?', type: 'word_problem', answer: '25' } ] },
+  { id: 'I', name: 'Multiplication', points: 6, questions: [ { id: 'I1', prompt: 'Which multiplication sentence best describes the grouping of candies? (A, B, or C)', type: 'multiple_choice', options: ['A','B','C'], answer: 'C' }, { id: 'I2', prompt: 'Which multiplication sentence best describes the arrangement of stars? (A, B, or C)', type: 'multiple_choice', options: ['A','B','C'], answer: 'A' }, { id: 'I3a', prompt: '4 x 1 = ?', type: 'numeric', answer: '4' }, { id: 'I3b', prompt: '5 x 4 = ?', type: 'numeric', answer: '20' }, { id: 'I3c', prompt: '__ x 9 = 0', type: 'numeric', answer: '0' }, { id: 'I3d', prompt: '2 x __ = 18', type: 'numeric', answer: '9' } ] },
+  { id: 'J', name: 'Division', points: 4, questions: [ { id: 'J1', prompt: 'Divide the balls equally into three groups. How many balls are in each group?', type: 'numeric', answer: '4' }, { id: 'J2a', prompt: '25 ÷ 5 = ?', type: 'numeric', answer: '5' }, { id: 'J2b', prompt: '32 ÷ 4 = ?', type: 'numeric', answer: '8' }, { id: 'J3', prompt: 'Word problem: Fifteen papayas are to be placed in baskets. If each basket contains 3 papayas, how many baskets are needed?', type: 'word_problem', answer: '5' } ] },
+  { id: 'K', name: 'Geometric Pattern', points: 7, questions: [ { id: 'K1', prompt: 'Name the shapes in the pattern.', type: 'short_answer', possible_answers: ['circle','half-circle','semi-circle','square'] }, { id: 'K2', prompt: 'Draw the missing shapes in the pattern (circle, half-circle, square, circle).', type: 'drawing', answer: ['circle','half-circle','square','circle'] } ] }
+] as Array<{ id: string; name: string; points: number; questions: any[] }>
+
 const selectedTaskId = ref<string>(tasks[0]?.id || 'A')
 const selectedQuestionId = ref<string>(tasks[0]?.questions?.[0]?.id || '')
 const selectedSection = ref<string>('Grade 2')
 
-const TASK_MAX_SCORE = 40
+// Per-task correctness should use the task's `points` value; no global TASK_MAX_SCORE.
 
 // All learners' best assessments (one per learner) for the grade. We fetch
 // assessments and group by learner_id similar to Scoresheet to avoid duplicates.
@@ -171,9 +185,10 @@ const studentResults = computed(() => {
         }
       }
     } else {
-      // Fallback: check stored per-task score. If user has full TASK_MAX_SCORE, consider them correct.
+      // Fallback: check stored per-task score. Use the task's configured `points`.
       const score = Number(entry.score ?? 0)
-      isCorrect = score >= TASK_MAX_SCORE
+      const taskMax = currentTask.value?.points ?? 0
+      isCorrect = taskMax > 0 ? score >= taskMax : false
     }
 
     results.push({ assessment: a, correct: isCorrect })

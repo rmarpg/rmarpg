@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { supabase } from '@/lib/supabase-client'
 import { ref } from 'vue'
@@ -63,7 +64,14 @@ const login = async (e: Event) => {
         <form @submit.prevent="login" method="post">
           <div class="grid gap-2">
             <Label for="email">Email address</Label>
-            <Input type="email" name="email" id="email" autocomplete="username" required />
+            <Input
+              type="email"
+              name="email"
+              id="email"
+              autocomplete="username"
+              required
+              placeholder="Email address"
+            />
           </div>
 
           <div v-if="errors" class="mt-2 text-sm text-red-600">
@@ -72,13 +80,7 @@ const login = async (e: Event) => {
 
           <div class="mt-4 grid gap-2">
             <Label for="password">Password</Label>
-            <Input
-              type="password"
-              name="password"
-              id="password"
-              autocomplete="current-password"
-              required
-            />
+            <PasswordInput name="password" id="password" placeholder="Password" required />
           </div>
 
           <Button variant="default" class="mt-4 w-full" :disabled="loading">Login</Button>

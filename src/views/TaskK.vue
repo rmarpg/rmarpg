@@ -606,7 +606,7 @@ const taskData = computed(() => {
   return {
     id: 'K',
     name: 'Geometric Pattern',
-    points: 8,
+    points: 7,
     time_limit_seconds: 90,
     questions: [
       {
