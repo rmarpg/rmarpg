@@ -4,11 +4,11 @@ import SelectContent from '@/components/ui/select/SelectContent.vue'
 import SelectItem from '@/components/ui/select/SelectItem.vue'
 import SelectTrigger from '@/components/ui/select/SelectTrigger.vue'
 import SelectValue from '@/components/ui/select/SelectValue.vue'
-import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { useAssessment, type Assessment } from '@/composables/useAssessment'
 import { useAuth } from '@/composables/useAuth'
-import { ref, onMounted, watch } from 'vue'
+import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { supabase } from '@/lib/supabase-client'
+import { onMounted, ref, watch } from 'vue'
 
 const selectedSection = ref('Rose')
 const GRADE_LEVEL = 2
