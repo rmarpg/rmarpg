@@ -26,7 +26,7 @@
             </div>
             <div>
               <div class="text-sm text-gray-500">Score</div>
-              <div class="text-xl font-semibold text-gray-900">{{ scorePercent }}%</div>
+              <div class="text-xl font-semibold text-gray-900">{{ percentCorrect }}%</div>
             </div>
             <div>
               <div class="text-sm text-gray-500">Correct</div>
@@ -72,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { Chart } from 'highcharts-vue'
 import * as Highcharts from 'highcharts'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -91,53 +91,128 @@ const { getBestAssessment } = useAssessment()
 const assessment = ref<Assessment | null>(null)
 const tasks = (rma as any).assessment.tasks as Array<{ id: string; name: string; questions: any[] }>
 const selectedTaskId = ref<string>(tasks[0]?.id || 'A')
+const selectedQuestionId = ref<string>(tasks[0]?.questions?.[0]?.id || '')
+
+const TASK_MAX_SCORE = 40
+
+// All learners' best assessments (one per learner) for the grade. We fetch
+// assessments and group by learner_id similar to Scoresheet to avoid duplicates.
+const learnerAssessments = ref<Array<any>>([])
 
 const currentTask = computed(() => tasks.find((t) => t.id === selectedTaskId.value))
+const currentQuestion = computed(() => currentTask.value?.questions?.find((q) => q.id === selectedQuestionId.value))
 const questionsCount = computed(() => currentTask.value?.questions?.length || 0)
 
-const scorePercent = computed(() => {
-  if (!assessment.value) return 0
-  const key = `task_${selectedTaskId.value.toLowerCase()}_score` as keyof Assessment
-  const val = assessment.value[key] as unknown as number
-  return Number(val || 0)
-})
+// Build per-question correctness by checking saved progress (answers) when present,
+// otherwise fallback to treating full-task scores as fully-correct.
+const studentResults = computed(() => {
+  const taskId = selectedTaskId.value
+  const question = currentQuestion.value
+  const results: Array<{ assessment: any; correct: boolean }> = []
+  if (!question) return results
 
-const correctCount = computed(() => Math.round((scorePercent.value / 100) * questionsCount.value))
-const wrongCount = computed(() => Math.max(questionsCount.value - correctCount.value, 0))
+  for (const a of learnerAssessments.value) {
+    const progressCol = `task_${taskId.toLowerCase()}_progress`
+    const progress = (a as any)[progressCol]
 
-const chartOptions = computed((): Highcharts.Options => {
-  return {
-    chart: { type: 'pie', backgroundColor: 'transparent', height: 320 },
-    title: { text: undefined },
-    tooltip: { pointFormat: '<b>{point.y}</b> ({point.percentage:.1f}%)' },
-    plotOptions: {
-      pie: {
-        dataLabels: {
-          enabled: true,
-          format: '<b>{point.name}</b><br>{point.y} ({point.percentage:.1f}%)',
-          style: { fontSize: '13px', fontWeight: '500' },
-        },
-        size: '80%',
-        borderWidth: 2,
-        borderColor: '#ffffff',
-      },
-    },
-    series: [
-      {
-        name: 'Answers',
-        type: 'pie',
-        data: [
-          { name: 'Correct', y: correctCount.value, color: '#22c55e' },
-          { name: 'Wrong', y: wrongCount.value, color: '#ef4444' },
-        ],
-      } as Highcharts.SeriesPieOptions,
-    ],
-    credits: { enabled: false },
+    let isCorrect = false
+
+    if (progress && progress.answers && typeof progress.answers === 'object') {
+      const ans = progress.answers[question.id]
+      if (ans !== undefined && ans !== null) {
+        const normalize = (s: any) => String(s).toLowerCase().trim()
+        const expected = question.answer
+        if (expected !== undefined) {
+          isCorrect = normalize(ans) === normalize(expected)
+        }
+      }
+    } else {
+      // Fallback: check task score. If user has full TASK_MAX_SCORE, consider them correct.
+      const scoreKey = `task_${taskId.toLowerCase()}_score`
+      const score = Number((a as any)[scoreKey] ?? 0)
+      isCorrect = score >= TASK_MAX_SCORE
+    }
+
+    results.push({ assessment: a, correct: isCorrect })
   }
+
+  return results
 })
+
+const correctCount = computed(() => studentResults.value.filter((r) => r.correct).length)
+const wrongCount = computed(() => studentResults.value.filter((r) => !r.correct).length)
+const percentCorrect = computed(() => {
+  const total = studentResults.value.length || 1
+  return Math.round((correctCount.value / total) * 100)
+})
+
+const chartOptions = computed((): Highcharts.Options => ({
+  chart: { type: 'pie', backgroundColor: 'transparent', height: 320 },
+  title: { text: undefined },
+  tooltip: { pointFormat: '<b>{point.y}</b> ({point.percentage:.1f}%)' },
+  plotOptions: {
+    pie: {
+      dataLabels: {
+        enabled: true,
+        format: '<b>{point.name}</b><br>{point.y} ({point.percentage:.1f}%)',
+        style: { fontSize: '13px', fontWeight: '500' },
+      },
+      size: '80%',
+      borderWidth: 2,
+      borderColor: '#ffffff',
+    },
+  },
+  series: [
+    {
+      name: 'Answers',
+      type: 'pie',
+      data: [
+        { name: 'Correct', y: correctCount.value, color: '#22c55e' },
+        { name: 'Wrong', y: wrongCount.value, color: '#ef4444' },
+      ],
+    } as Highcharts.SeriesPieOptions,
+  ],
+  credits: { enabled: false },
+}))
+
+// Fetch learners' best assessments for grade level
+const fetchLearnerAssessments = async () => {
+  try {
+    const { data, error } = await (await import('@/lib/supabase-client')).supabase
+      .from('assessments')
+      .select(
+        `*, profiles!learner_id ( first_name, last_name, section )`,
+      )
+      .eq('grade_level', 2)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching assessments for summary:', error)
+      return
+    }
+
+    const byUser: Record<string, any> = {}
+    for (const a of (data || [])) {
+      const key = a.learner_id
+      if (!key) continue
+      const existing = byUser[key]
+      if (!existing || (a.total_score ?? 0) > (existing.total_score ?? 0)) {
+        byUser[key] = a
+      }
+    }
+
+    learnerAssessments.value = Object.values(byUser)
+  } catch (err) {
+    console.error('Unexpected error fetching learner assessments:', err)
+  }
+}
 
 onMounted(async () => {
-  if (!user.value) return
-  assessment.value = await getBestAssessment(user.value)
+  await fetchLearnerAssessments()
+})
+
+// Keep selectedQuestionId in sync when task changes
+watch(selectedTaskId, (newId) => {
+  selectedQuestionId.value = tasks.find((t) => t.id === newId)?.questions?.[0]?.id || ''
 })
 </script>
