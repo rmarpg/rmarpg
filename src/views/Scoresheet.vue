@@ -430,7 +430,9 @@ watch(selectedSection, async () => {
                 <td class="border border-gray-300 px-2 py-3 text-xs lg:px-3 lg:text-sm">
                   {{ index + 1 }}
                 </td>
-                <td class="border border-gray-300 px-2 py-3 font-mono text-xs lg:px-3"></td>
+                <td class="border border-gray-300 px-2 py-3 font-mono text-xs lg:px-3">
+                  {{ assessment.learner_id ? assessment.learner_id.slice(0, 8) : '' }}
+                </td>
                 <td class="border border-gray-300 px-2 py-3 text-xs lg:px-3 lg:text-sm">
                   {{ getLearnerName(assessment) }}
                 </td>
