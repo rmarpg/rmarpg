@@ -364,7 +364,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import {
@@ -1152,11 +1152,26 @@ const restartTask = async () => {
 
 // Lifecycle
 onMounted(async () => {
-  // Try to load saved progress first
-  const progressLoaded = await loadProgress()
-
-  if (progressLoaded) {
-    console.log(`Resuming Task ${props.task.id} from saved progress`)
+  // Attempt to load saved progress once an assessment ID is available.
+  if (currentAssessment.value?.id) {
+    const progressLoaded = await loadProgress()
+    if (progressLoaded) {
+      console.log(`Resuming Task ${props.task.id} from saved progress`)
+    }
+  } else {
+    // Wait for the assessment to be set by parent/views, then load progress once.
+    const stopWatching = watch(
+      () => currentAssessment.value,
+      async (val) => {
+        if (val?.id) {
+          const progressLoaded = await loadProgress()
+          if (progressLoaded) {
+            console.log(`Resuming Task ${props.task.id} from saved progress`)
+          }
+          stopWatching()
+        }
+      },
+    )
   }
 
   startTimer()
