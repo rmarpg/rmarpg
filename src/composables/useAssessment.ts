@@ -82,7 +82,10 @@ export function useAssessment() {
       const { count, error } = await supabase
         .from('assessments')
         .select('id', { count: 'exact', head: true })
+        // Only count completed assessments as attempts. In-progress (completed_at = null)
+        // should not consume a try if the user closes the browser.
         .eq('learner_id', user.id)
+        .not('completed_at', 'is', null)
 
       if (error) {
         console.error('Error counting attempts:', error)
