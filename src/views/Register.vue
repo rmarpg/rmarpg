@@ -35,6 +35,7 @@ const register = async (e: Event) => {
       data: {
         first_name: formData.get('first_name') as string,
         last_name: formData.get('last_name') as string,
+        learner_id: formData.get('learner_id') as string,
         section: section.value,
         gender: gender.value,
       },
@@ -72,6 +73,11 @@ const register = async (e: Event) => {
           <div class="mt-4 grid gap-2">
             <Label for="last_name">Last name</Label>
             <Input type="text" name="last_name" id="last_name" required />
+          </div>
+
+          <div class="mt-4 grid gap-2">
+            <Label for="learner_id">Learner ID</Label>
+            <Input type="text" name="learner_id" id="learner_id" placeholder="e.g. LRN-12345678" required />
           </div>
 
           <div class="mt-4 grid gap-2">
