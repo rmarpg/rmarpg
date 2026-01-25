@@ -41,8 +41,22 @@ const fetchAssessments = async () => {
       return
     }
 
-    // If a section is selected, filter client-side using the joined profile.section
-    const items = (data || []).filter((a: any) => {
+    // Group by learner_id and keep the highest total_score per user,
+    // then apply section filter.
+    const byUser: Record<string, any> = {}
+    for (const a of (data || [])) {
+      const key = a.learner_id
+      if (!key) continue
+      const existing = byUser[key]
+      if (!existing || (a.total_score ?? 0) > (existing.total_score ?? 0)) {
+        byUser[key] = a
+      }
+    }
+
+    const grouped = Object.values(byUser).sort((a: any, b: any) => (b.total_score ?? 0) - (a.total_score ?? 0))
+
+    // If a section is selected, filter using the joined profile.section
+    const items = grouped.filter((a: any) => {
       if (!selectedSection.value) return true
       const profileSection = (a as any)?.profiles?.section
       if (!profileSection) return false
@@ -50,7 +64,7 @@ const fetchAssessments = async () => {
     })
 
     assessments.value = items
-    console.log('Fetched assessments (filtered):', assessments.value)
+    console.log('Fetched assessments (grouped by learner, filtered):', assessments.value)
   } catch (error) {
     console.error('Error fetching assessments:', error)
   }

@@ -248,13 +248,14 @@ export function useAssessment() {
     }
   }
 
-  // Compute maximum possible total from assessment definition
+  // Scoring constants and maximum total. The DB stores each task score on a 0-40 scale.
+  // MAX_POSSIBLE_TOTAL is the number of tasks * TASK_MAX_SCORE so totals align
+  // with how scores are stored in the database.
+  const TASK_MAX_SCORE = 40
   const MAX_POSSIBLE_TOTAL = (() => {
     try {
-      return (rma as unknown as Rma).assessment.tasks.reduce(
-        (sum: number, t: RmaTask) => sum + (Number(t.points) || 0),
-        0,
-      )
+      const tasks = (rma as any).assessment.tasks || []
+      return tasks.length * TASK_MAX_SCORE
     } catch (err) {
       console.warn('Failed to compute MAX_POSSIBLE_TOTAL from rma.json, falling back to 1100', err)
       return 1100
@@ -281,45 +282,51 @@ export function useAssessment() {
 
     loading.value = true
     try {
-      const updateData: Partial<Assessment> & Record<string, unknown> = {
+      // Normalize incoming score (calculated against rma.json `points`) to the
+      // DB scale (0..TASK_MAX_SCORE) before saving. This keeps stored task_*_score
+      // values consistent across tasks.
+      const rawScore = Number(score)
+      let storeScore = rawScore
+
+      try {
+        const taskDef = ((rma as any).assessment.tasks || []).find(
+          (t: any) => String(t.id).toUpperCase() === String(taskName).toUpperCase(),
+        )
+        const taskPoints = Number(taskDef?.points) || null
+        if (taskPoints && taskPoints > 0 && taskPoints !== TASK_MAX_SCORE) {
+          storeScore = Math.round((rawScore / taskPoints) * TASK_MAX_SCORE)
+        }
+      } catch (err) {
+        console.warn('Failed to normalize task score to 0-40 scale:', err)
+        storeScore = rawScore
+      }
+
+      const updateData: Partial<Assessment> = {
+        [`task_${taskName.toLowerCase()}_score`]: storeScore,
         updated_at: new Date().toISOString(),
       }
-      updateData[scoreKey as string] = score
 
-      // list the known score keys and compute a new total safely
-      const scoreKeys: Array<keyof Assessment> = [
-        'task_a_score',
-        'task_b_score',
-        'task_c_score',
-        'task_d_score',
-        'task_e_score',
-        'task_f_score',
-        'task_g_score',
-        'task_h_score',
-        'task_i_score',
-        'task_j_score',
-        'task_k_score',
-      ]
-
-      let totalScore = scoreKeys.reduce((sum, key) => {
-        const val =
-          key === scoreKey ? score : getNumericAssessmentValue(currentAssessment.value, key)
-        return sum + val
-      }, 0)
-
-      // Defensive: clamp totalScore to the declared maximum (prevents >100% due to rounding or upstream bugs)
-      if (totalScore > MAX_POSSIBLE_TOTAL) {
-        console.warn('Computed total_score exceeds MAX_POSSIBLE_TOTAL — clamping.', {
-          totalScore,
-          MAX_POSSIBLE_TOTAL,
-          assessmentId: currentAssessment.value?.id,
-        })
-        totalScore = MAX_POSSIBLE_TOTAL
+      // Calculate new total score using the normalized storeScore
+      const currentScores = {
+        task_a_score: currentAssessment.value.task_a_score,
+        task_b_score: currentAssessment.value.task_b_score,
+        task_c_score: currentAssessment.value.task_c_score,
+        task_d_score: currentAssessment.value.task_d_score,
+        task_e_score: currentAssessment.value.task_e_score,
+        task_f_score: currentAssessment.value.task_f_score,
+        task_g_score: currentAssessment.value.task_g_score,
+        task_h_score: currentAssessment.value.task_h_score,
+        task_i_score: currentAssessment.value.task_i_score,
+        task_j_score: currentAssessment.value.task_j_score,
+        task_k_score: currentAssessment.value.task_k_score,
+        [`task_${taskName.toLowerCase()}_score`]: storeScore,
       }
 
-      let overallScore = (totalScore / MAX_POSSIBLE_TOTAL) * 100
-      // Defensive: ensure overallScore never exceeds 100 (floating point / rounding safety)
-      overallScore = Math.min(Number(overallScore.toFixed(2)), 100)
+      const totalScore = Object.values(currentScores).reduce(
+        (sum: number, score: any) => sum + (Number(score) || 0),
+        0,
+      )
+      const overallScore = (totalScore / MAX_POSSIBLE_TOTAL) * 100
 
       updateData.total_score = totalScore
       updateData.overall_score = overallScore

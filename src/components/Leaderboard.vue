@@ -112,6 +112,8 @@ const fetchLeaderboard = async () => {
     error.value = null
 
     // Try to fetch assessments with profile information
+    // Fetch a reasonably large page of completed assessments, then group
+    // client-side to ensure we keep one (best) assessment per learner.
     const { data, error: fetchError } = await supabase
       .from('assessments')
       .select(
@@ -128,8 +130,8 @@ const fetchLeaderboard = async () => {
       `,
       )
       .not('completed_at', 'is', null)
-      .order('total_score', { ascending: false })
-      .limit(10)
+      .order('created_at', { ascending: false })
+      .limit(1000)
 
     if (fetchError) {
       console.warn('Error fetching leaderboard:', fetchError)
