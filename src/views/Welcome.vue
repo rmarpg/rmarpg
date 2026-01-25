@@ -140,7 +140,6 @@ const requestExtra = async () => {
           <div class="flex items-center justify-center gap-2">
             <h1 class="text-2xl font-bold text-white sm:text-3xl">Welcome!</h1>
           </div>
-          <p class="mt-2 text-sm text-white/80 sm:text-base">You have 20s to finish 2 questions</p>
           <p class="mt-2 text-sm text-white/60">
             Grade 2 RMA. This quiz consist of 11 Tasks with 1-4 questions each
           </p>
