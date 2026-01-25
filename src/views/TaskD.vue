@@ -6,7 +6,6 @@
           question,
           onAnswer,
           feedbackState,
-          isShowingFeedback,
           hasAnsweredCurrentQuestion,
         }"
       >
@@ -75,7 +74,7 @@ const taskData = computed(() => {
       prompt: 'Fill in missing fraction between 1/10 and 1/7',
       type: 'multiple_choice',
       answer: '1/8',
-      options: ['1/8', '1/9', '1/6', '1/11'],
+      options: ['1/8', '1/12', '1/6', '1/11'],
     },
     {
       id: 'D1b',
