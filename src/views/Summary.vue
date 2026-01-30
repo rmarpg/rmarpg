@@ -142,7 +142,8 @@ const tasks = [
   { id: 'H', name: 'Subtraction Word Problem', points: 2, questions: [ { id: 'H1', prompt: 'Jose harvested 125 mangoes. He gave 12 to his neighbor. How many were left?', type: 'word_problem', answer: '113' }, { id: 'H2', prompt: 'Carla bought clothes for P225.00. How much was her change if she gave P250.00?', type: 'word_problem', answer: '25' } ] },
   { id: 'I', name: 'Multiplication', points: 6, questions: [ { id: 'I1', prompt: 'Which multiplication sentence best describes the grouping of candies? (A, B, or C)', type: 'multiple_choice', options: ['A','B','C'], answer: 'C' }, { id: 'I2', prompt: 'Which multiplication sentence best describes the arrangement of stars? (A, B, or C)', type: 'multiple_choice', options: ['A','B','C'], answer: 'A' }, { id: 'I3a', prompt: '4 x 1 = ?', type: 'numeric', answer: '4' }, { id: 'I3b', prompt: '5 x 4 = ?', type: 'numeric', answer: '20' }, { id: 'I3c', prompt: '__ x 9 = 0', type: 'numeric', answer: '0' }, { id: 'I3d', prompt: '2 x __ = 18', type: 'numeric', answer: '9' } ] },
   { id: 'J', name: 'Division', points: 4, questions: [ { id: 'J1', prompt: 'Divide the balls equally into three groups. How many balls are in each group?', type: 'numeric', answer: '4' }, { id: 'J2a', prompt: '25 ÷ 5 = ?', type: 'numeric', answer: '5' }, { id: 'J2b', prompt: '32 ÷ 4 = ?', type: 'numeric', answer: '8' }, { id: 'J3', prompt: 'Word problem: Fifteen papayas are to be placed in baskets. If each basket contains 3 papayas, how many baskets are needed?', type: 'word_problem', answer: '5' } ] },
-  { id: 'K', name: 'Geometric Pattern', points: 7, questions: [ { id: 'K1', prompt: 'Name the shapes in the pattern.', type: 'short_answer', possible_answers: ['circle','half-circle','semi-circle','square'] }, { id: 'K2', prompt: 'Draw the missing shapes in the pattern (circle, half-circle, square, circle).', type: 'drawing', answer: ['circle','half-circle','square','circle'] } ] }
+{ id: 'K', name: 'Geometric Pattern', points: 7, questions: [ { id: 'K1', prompt: 'Name the shapes in the pattern.', type: 'short_answer', possible_answers: ['circle','half-circle','semi-circle','square'] }, { id: 'K2', prompt: 'Draw the missing shapes in the pattern (circle, half-circle, square, circle).', type: 'drawing', answer: ['circle','half-circle','square','circle'] } ] },
+  { id: 'L', name: '3D Shapes', points: 5, questions: [ { id: 'L1', prompt: 'Encircle the figures that have a flat surface.', type: 'click_select', answer: 'pyramid,rectangle' }, { id: 'L2', prompt: 'Encircle the figures that have a curved surface.', type: 'click_select', answer: 'cone,sphere' } ] }
 ] as Array<{ id: string; name: string; points: number; questions: any[] }>
 
 const selectedTaskId = ref<string>(tasks[0]?.id || 'A')
@@ -168,10 +169,12 @@ const studentResults = computed(() => {
   if (!question) return results
 
   for (const a of learnerAssessments.value) {
-    const taskKey = selectedTaskId.value.toUpperCase()
-    const taskMap = (a as any)._taskScores || {}
-    const entry = taskMap[taskKey] || {}
-    const progress = entry.progress
+  const taskKey = selectedTaskId.value.toUpperCase()
+  const taskMap = (a as any)._taskScores || {}
+  // Prefer subtask entry for the selected question, fall back to task-level (subtask='')
+  const subtaskKey = question.id
+  const entry = (taskMap[taskKey] && (taskMap[taskKey][subtaskKey] || taskMap[taskKey][''])) || {}
+  const progress = entry?.progress
 
     let isCorrect = false
 
@@ -246,16 +249,19 @@ const fetchLearnerAssessments = async () => {
       if (ids.length > 0) {
         const { data: taskRows, error: taskErr } = await (await import('@/lib/supabase-client')).supabase
           .from('assessment_task_scores')
-          .select('assessment_id, task, score, progress')
+          .select('assessment_id, task, subtask, score, progress')
           .in('assessment_id', ids)
 
         if (taskErr) {
           console.warn('Failed to fetch assessment_task_scores for summary:', taskErr)
         } else if (taskRows) {
-          const map: Record<string, Record<string, any>> = {}
+          const map: Record<string, Record<string, Record<string, any>>> = {}
           for (const r of taskRows) {
             map[r.assessment_id] = map[r.assessment_id] || {}
-            map[r.assessment_id][r.task] = { score: r.score, progress: r.progress }
+            map[r.assessment_id][r.task] = map[r.assessment_id][r.task] || {}
+            // Use empty-string subtask as task-level aggregate
+            const subkey = r.subtask ?? ''
+            map[r.assessment_id][r.task][subkey] = { score: r.score, progress: r.progress }
           }
 
           for (const a of assessments) {

@@ -262,6 +262,7 @@ const taskConfig = {
   task_i: { name: 'Task I', maxScore: 100 },
   task_j: { name: 'Task J', maxScore: 100 },
   task_k: { name: 'Task K', maxScore: 100 },
+  task_l: { name: 'Task L', maxScore: 100 },
 }
 
 const maxPossibleScore = computed(() => {
@@ -283,6 +284,7 @@ const taskScores = computed(() => {
     task_i: assessment.value.task_i_score,
     task_j: assessment.value.task_j_score,
     task_k: assessment.value.task_k_score,
+    task_l: assessment.value.task_l_score,
   }
 })
 

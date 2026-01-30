@@ -1,14 +1,7 @@
 <template>
   <RMALayout>
     <Task :task="taskData" @taskComplete="onTaskComplete" @timeUp="onTimeUp">
-      <template
-        #default="{
-          question,
-          onAnswer,
-          feedbackState,
-          hasAnsweredCurrentQuestion,
-        }"
-      >
+      <template #default="{ question, onAnswer, feedbackState, hasAnsweredCurrentQuestion }">
         <!-- Multiple Choice Buttons -->
         <div class="space-y-4">
           <label class="block text-sm font-medium text-gray-700"> Choose your answer: </label>
@@ -29,7 +22,6 @@
                 getButtonFeedbackClass(option, question, feedbackState),
               ]"
             >
-
               <span v-html="formatOption(option)" class="text-sm sm:text-base"></span>
             </Button>
           </div>

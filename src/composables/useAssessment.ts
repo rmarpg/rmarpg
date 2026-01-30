@@ -53,6 +53,7 @@ export interface Assessment {
   task_i_score: number
   task_j_score: number
   task_k_score: number
+  task_l_score: number
   total_score: number
   overall_score: number
   completed_at?: string | null
@@ -74,6 +75,12 @@ export function useAssessment() {
   const loading = ref(false)
   const currentAssessment = ref<Assessment | null>(null)
   const MAX_ATTEMPTS = 3
+
+  // localStorage key for per-browser assessment session
+  const SESSION_KEY = 'rma_assessment_session'
+
+  // Guard concurrent createAssessment calls per-user to avoid duplicate inserts
+  const _creatingAssessmentPromises = new Map<string, Promise<Assessment | null>>()
 
   // Internal helper: count assessments for a user
   const getAttemptCount = async (user: User): Promise<number> => {
@@ -191,64 +198,88 @@ export function useAssessment() {
     }
   }
 
-  const createAssessment = async (user: User, gradeLevel = 2): Promise<Assessment | null> => {
+  const createAssessment = async (user: User, gradeLevel = 2, sessionId?: string): Promise<Assessment | null> => {
     if (!user?.id) {
       console.error('User not provided for assessment creation')
       return null
     }
+    // Use a composite key for concurrent create guard so different browser sessions
+    // don't collide in the same runtime.
+    const guardKey = `${user.id}:${sessionId ?? ''}`
+    // If a create is already in progress for this user+session, return the same promise
+    if (_creatingAssessmentPromises.has(guardKey)) {
+      return _creatingAssessmentPromises.get(guardKey) || null
+    }
 
     loading.value = true
-    try {
-      // Enforce attempt limit and approved retries
-      const startCheck = await canStartAssessment(user)
-      if (!startCheck.allowed) {
-        console.warn('Attempt limit enforcement:', startCheck.reason)
-        return null
-      }
+    // Build the promise and store it so concurrent callers reuse it
+    const createPromise = (async () => {
+      try {
+        // Enforce attempt limit and approved retries
+        const startCheck = await canStartAssessment(user)
+        if (!startCheck.allowed) {
+          console.warn('Attempt limit enforcement:', startCheck.reason)
+          return null
+        }
 
-      const assessmentData: Omit<Assessment, 'id' | 'created_at' | 'updated_at'> = {
-        learner_id: user.id,
-        grade_level: gradeLevel,
-        assessment_date: new Date().toISOString().split('T')[0],
-        task_a_score: 0,
-        task_b_score: 0,
-        task_c_score: 0,
-        task_d_score: 0,
-        task_e_score: 0,
-        task_f_score: 0,
-        task_g_score: 0,
-        task_h_score: 0,
-        task_i_score: 0,
-        task_j_score: 0,
-        task_k_score: 0,
-        total_score: 0,
-        overall_score: 0,
-      }
+        const assessmentData: any = {
+          learner_id: user.id,
+          grade_level: gradeLevel,
+          assessment_date: new Date().toISOString().split('T')[0],
+          task_a_score: 0,
+          task_b_score: 0,
+          task_c_score: 0,
+          task_d_score: 0,
+          task_e_score: 0,
+          task_f_score: 0,
+          task_g_score: 0,
+          task_h_score: 0,
+          task_i_score: 0,
+          task_j_score: 0,
+          task_k_score: 0,
+          task_l_score: 0,
+          total_score: 0,
+          overall_score: 0,
+        }
+        if (sessionId) assessmentData.session_id = sessionId
 
-      const { data, error } = await supabase
-        .from('assessments')
-        .insert(assessmentData)
-        .select()
-        .single()
+        // Try insert; if a concurrent insert created the same open assessment
+        // (enforced by DB partial index), catch unique-violation and return existing.
+        const insertRes = await supabase.from('assessments').insert(assessmentData).select().single()
+        const data = (insertRes as any).data
+        const error = (insertRes as any).error
 
-      if (error) {
+        if (error) {
+          // If unique violation, fetch existing open assessment instead of failing
+          if ((error.code === '23505' || (error.details || '').includes('unique')) ) {
+            console.warn('Unique constraint violation creating assessment; fetching existing')
+            const existing = await getCurrentAssessment(user, sessionId)
+            return existing
+          }
+          console.error('Error creating assessment:', error)
+          return null
+        }
+
+        // If this start was allowed due to an approved request, consume it
+        if (startCheck.approvedRequestId) {
+          await markRetryUsed(startCheck.approvedRequestId)
+        }
+
+        currentAssessment.value = data
+        return data
+      } catch (error) {
         console.error('Error creating assessment:', error)
         return null
+      } finally {
+        loading.value = false
       }
+    })()
 
-      // If this start was allowed due to an approved request, consume it
-      if (startCheck.approvedRequestId) {
-        await markRetryUsed(startCheck.approvedRequestId)
-      }
+    _creatingAssessmentPromises.set(guardKey, createPromise)
+    // Ensure the promise is cleaned up after completion
+    createPromise.finally(() => _creatingAssessmentPromises.delete(guardKey))
 
-      currentAssessment.value = data
-      return data
-    } catch (error) {
-      console.error('Error creating assessment:', error)
-      return null
-    } finally {
-      loading.value = false
-    }
+    return createPromise
   }
 
   // The perfect total is a static value (44) for reporting purposes.
@@ -276,18 +307,22 @@ export function useAssessment() {
       const assessmentId = currentAssessment.value.id
       // Ensure incoming score is a non-negative integer on the task's points scale.
       const rawScore = Number(score)
-      const storeScore = Number.isFinite(rawScore) ? Math.max(0, Math.floor(rawScore)) : 0
+      // Allow fractional scores (do not clamp to integer). Ensure non-negative numeric value.
+      const storeScore = Number.isFinite(rawScore) ? Math.max(0, rawScore) : 0
 
       // Upsert into assessment_task_scores
       const taskKey = taskName.toUpperCase()
       const upsertPayload = {
         assessment_id: assessmentId,
         task: taskKey,
+        subtask: '',
         score: storeScore,
         updated_at: new Date().toISOString(),
       }
 
-      const { error: upsertError } = await supabase.from('assessment_task_scores').upsert(upsertPayload, { onConflict: 'assessment_id,task' })
+      const { error: upsertError } = await supabase
+        .from('assessment_task_scores')
+        .upsert(upsertPayload, { onConflict: 'assessment_id,task,subtask' })
       if (upsertError) {
         console.error('Failed to upsert assessment_task_scores:', upsertError)
         return false
@@ -306,10 +341,18 @@ export function useAssessment() {
       const totalScore = (scoresData || []).reduce((sum: number, row: any) => sum + (Number(row.score) || 0), 0)
       const overallScore = (totalScore / MAX_POSSIBLE_TOTAL) * 100
 
-      // Persist totals back to assessments table
+      // Persist totals back to assessments table and update the specific task column
+      const taskColumn = `task_${taskKey.toLowerCase()}_score`
+      const updatePayload: any = {
+        total_score: totalScore,
+        overall_score: overallScore,
+        updated_at: new Date().toISOString(),
+      }
+      updatePayload[taskColumn] = storeScore
+
       const { data: updatedAssessment, error: updateError } = await supabase
         .from('assessments')
-        .update({ total_score: totalScore, overall_score: overallScore, updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq('id', assessmentId)
         .select()
         .single()
@@ -329,14 +372,184 @@ export function useAssessment() {
     }
   }
 
-  const getCurrentAssessment = async (user: User): Promise<Assessment | null> => {
+    // Record a subtask (question-level) score and optional progress JSON
+    const recordSubtaskScore = async (
+      assessmentId: string,
+      taskId: string,
+      subtaskId: string,
+      score: number,
+      progress?: any,
+    ): Promise<boolean> => {
+      loading.value = true
+      try {
+        const taskKey = taskId.toUpperCase()
+        const upsertPayload: any = {
+          assessment_id: assessmentId,
+          task: taskKey,
+          subtask: subtaskId,
+          // Allow fractional subtask scores; ensure non-negative numeric value
+          score: Number.isFinite(Number(score)) ? Math.max(0, Number(score)) : 0,
+          updated_at: new Date().toISOString(),
+        }
+
+        if (progress !== undefined) upsertPayload.progress = progress
+
+        // Try to INSERT a dedicated per-subtask row. If the row already exists
+        // (same assessment_id, task, subtask) then UPDATE that specific row.
+        // Using explicit insert avoids accidentally aggregating into the task-level
+        // row (subtask = '').
+        let upsertData: any = null
+        try {
+          const insertRes = await supabase
+            .from('assessment_task_scores')
+            .insert(upsertPayload)
+            .select()
+            .maybeSingle()
+
+          if ((insertRes as any).error) {
+            // If insert failed due to conflict, fall back to updating the exact subtask row
+            const err = (insertRes as any).error
+            const isConflict = (err?.code === '23505' || (err?.details || '').toLowerCase().includes('unique'))
+            if (isConflict) {
+              console.warn('Subtask insert conflict, updating existing subtask row instead')
+              const { data: updated, error: updateErr } = await supabase
+                .from('assessment_task_scores')
+                .update(upsertPayload)
+                .eq('assessment_id', assessmentId)
+                .eq('task', taskKey)
+                .eq('subtask', subtaskId)
+                .select()
+                .maybeSingle()
+
+              if (updateErr) {
+                console.error('Failed to update existing subtask row after conflict:', updateErr)
+                return false
+              }
+              upsertData = updated
+            } else {
+              console.error('Failed to insert assessment_task_scores (subtask):', err)
+              return false
+            }
+          } else {
+            upsertData = (insertRes as any).data
+          }
+        } catch (err) {
+          console.error('Unexpected error inserting/updating subtask row:', err)
+          return false
+        }
+
+        if (!upsertData) {
+          console.warn('Insert/update succeeded but no row returned for subtask upsert', upsertPayload)
+        } else if (upsertData.subtask === null || upsertData.subtask === undefined || upsertData.subtask === '') {
+          console.warn('Subtask column appears missing after insert/update; payload:', upsertPayload, 'returned:', upsertData)
+        }
+
+        // Verify persisted row explicitly to catch DB-side surprises
+        try {
+          const { data: verifyRow, error: verifyErr } = await supabase
+            .from('assessment_task_scores')
+            .select('subtask, task, score, progress')
+            .eq('assessment_id', assessmentId)
+            .eq('task', taskKey)
+            .eq('subtask', subtaskId)
+            .maybeSingle()
+
+          if (verifyErr) {
+            console.warn('Failed to verify subtask upsert row:', verifyErr)
+          } else if (!verifyRow) {
+            console.warn('No row found when verifying subtask upsert; payload:', upsertPayload)
+          } else if (verifyRow.subtask !== subtaskId) {
+            console.error('Subtask verification mismatch: expected', subtaskId, 'got', verifyRow.subtask, 'payload:', upsertPayload, 'verifyRow:', verifyRow)
+          }
+        } catch (err) {
+          console.error('Unexpected error verifying subtask upsert:', err)
+        }
+
+        // Recompute total for the assessment (sum all per-subtask scores)
+        const { data: scoresData, error: scoresError } = await supabase
+          .from('assessment_task_scores')
+          .select('task, score')
+          .eq('assessment_id', assessmentId)
+
+        if (scoresError) {
+          console.warn('Failed to fetch task scores for total recompute:', scoresError)
+        }
+
+        const totalScore = (scoresData || []).reduce((sum: number, row: any) => sum + (Number(row.score) || 0), 0)
+        // compute per-task subtotal for the task we just recorded
+        const taskSubtotal = (scoresData || [])
+          .filter((r: any) => String(r.task).toUpperCase() === taskKey)
+          .reduce((s: number, r: any) => s + (Number(r.score) || 0), 0)
+        const overallScore = (totalScore / MAX_POSSIBLE_TOTAL) * 100
+
+        const taskColumn = `task_${taskKey.toLowerCase()}_score`
+        const updatePayload: any = {
+          total_score: totalScore,
+          overall_score: overallScore,
+          updated_at: new Date().toISOString(),
+        }
+        updatePayload[taskColumn] = taskSubtotal
+
+        const { data: updatedAssessment, error: updateError } = await supabase
+          .from('assessments')
+          .update(updatePayload)
+          .eq('id', assessmentId)
+          .select()
+          .single()
+
+        if (updateError) {
+          console.error('Failed to update assessment totals:', updateError)
+          return false
+        }
+
+        currentAssessment.value = updatedAssessment
+        return true
+      } catch (err) {
+        console.error('Error recording subtask score:', err)
+        return false
+      } finally {
+        loading.value = false
+      }
+    }
+
+  const getCurrentAssessment = async (user: User, sessionId?: string): Promise<Assessment | null> => {
     if (!user?.id) {
       console.error('User not provided for assessment retrieval')
       return null
     }
 
+    // If sessionId not provided, try to read from localStorage (browser session)
+    let resolvedSessionId = sessionId
+    if (!resolvedSessionId) {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          resolvedSessionId = window.localStorage.getItem(SESSION_KEY) || undefined
+        }
+      } catch (err) {
+        // ignore localStorage read errors
+      }
+    }
+
     loading.value = true
     try {
+      // Prefer finding an open assessment tied to this browser session
+      if (resolvedSessionId) {
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('assessments')
+          .select('*')
+          .eq('session_id', resolvedSessionId)
+          .is('completed_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (!sessionError && sessionData) {
+          currentAssessment.value = sessionData
+          return sessionData
+        }
+      }
+
+      // Fallback: find any open assessment for the learner
       const { data, error } = await supabase
         .from('assessments')
         .select('*')
@@ -344,7 +557,7 @@ export function useAssessment() {
         .is('completed_at', null)
         .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle() // Use maybeSingle instead of single to handle no results gracefully
+        .maybeSingle()
 
       if (error) {
         console.error('Error fetching current assessment:', error)
@@ -391,13 +604,21 @@ export function useAssessment() {
   }
 
   const getOrCreateAssessment = async (user: User, gradeLevel = 2): Promise<Assessment | null> => {
-    // First try to get existing assessment
+    // First try to get existing assessment (this will prefer session_id if present)
     let assessment = await getCurrentAssessment(user)
 
-    // If no assessment exists, create a new one
+    // If no assessment exists, create a new one, passing session id from localStorage if available
     if (!assessment) {
       console.log('No existing assessment found, creating new one')
-      assessment = await createAssessment(user, gradeLevel)
+      let sessionId: string | undefined
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          sessionId = window.localStorage.getItem(SESSION_KEY) || undefined
+        }
+      } catch (err) {
+        // ignore
+      }
+      assessment = await createAssessment(user, gradeLevel, sessionId)
     } else {
       console.log('Using existing assessment:', assessment.id)
     }
@@ -433,10 +654,10 @@ export function useAssessment() {
       }
     })
 
-    // Never return more than the configured maxPoints (defensive)
-    // Use floor so fractional per-subtask points (e.g., 3.5) do not round up to the
-    // next integer — preserves conservative scoring.
-    return Math.min(Math.floor((correctAnswers / questions.length) * maxPoints), maxPoints)
+    // Never return more than the configured maxPoints (defensive).
+    // Allow fractional per-subtask points (e.g., 3.5) to be preserved.
+    const raw = (correctAnswers / questions.length) * maxPoints
+    return Math.min(raw, maxPoints)
   }
 
   const saveTaskProgress = async (
@@ -450,11 +671,14 @@ export function useAssessment() {
       const upsertPayload = {
         assessment_id: assessmentId,
         task: taskKey,
+        subtask: '',
         progress: progress,
         updated_at: new Date().toISOString(),
       }
 
-      const { error } = await supabase.from('assessment_task_scores').upsert(upsertPayload, { onConflict: 'assessment_id,task' })
+      const { error } = await supabase
+        .from('assessment_task_scores')
+        .upsert(upsertPayload, { onConflict: 'assessment_id,task,subtask' })
       if (error) {
         console.error('Error upserting task progress:', error)
         return false
@@ -481,6 +705,7 @@ export function useAssessment() {
         .select('progress')
         .eq('assessment_id', assessmentId)
         .eq('task', taskKey)
+        .eq('subtask', '')
         .maybeSingle()
 
       if (error) {
@@ -539,6 +764,7 @@ export function useAssessment() {
     getAttemptCount,
     createAssessment,
     updateTaskScore,
+    recordSubtaskScore,
     getCurrentAssessment,
     getBestAssessment,
     getOrCreateAssessment,

@@ -37,7 +37,10 @@
               ]"
             >
               <div class="flex flex-col items-center">
-                <div class="font-mono text-base sm:text-lg" v-html="formatMultiplication(choice.equation)"></div>
+                <div
+                  class="font-mono text-base sm:text-lg"
+                  v-html="formatMultiplication(choice.equation)"
+                ></div>
               </div>
             </Button>
           </div>

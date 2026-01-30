@@ -12,6 +12,7 @@ const router = useRouter()
 const { user } = useAuth()
 const {
   getCurrentAssessment,
+  getBestAssessment,
   createAssessment,
   canStartAssessment,
   requestExtraAttempt,
@@ -33,15 +34,23 @@ const checkPerfectScore = async () => {
   }
 
   try {
+    // Prefer the current (in-progress) assessment tied to this session.
+    // If that doesn't indicate a perfect score, check the best completed assessment.
     const assessment = await getCurrentAssessment(user.value)
     if (assessment) {
-      const overall = Number(assessment.overall_score || 0)
-      if (!isNaN(overall)) {
-        hasPerfectScore.value = overall >= 100
+      const overall = Number(assessment.overall_score ?? assessment.total_score ?? 0)
+      if (!isNaN(overall) && overall >= 100) {
+        hasPerfectScore.value = true
         return
       }
+    }
 
-      hasPerfectScore.value = Number(assessment.total_score) === 100
+    // Fallback: check the best (completed) assessment for a perfect score
+    const best = await getBestAssessment(user.value)
+    if (best) {
+      const bestOverall = Number(best.overall_score ?? best.total_score ?? 0)
+      hasPerfectScore.value = !isNaN(bestOverall) && bestOverall >= 100
+      return
     }
   } catch (e) {
     console.error('Error checking perfect score:', e)
@@ -108,7 +117,24 @@ const startAssessment = async () => {
     startBlockReason.value = res.reason || 'Attempt limit reached.'
     return
   }
-  const created = await createAssessment(user.value, 2)
+  // Ensure a per-browser session id exists so we can resume the same assessment
+  const SESSION_KEY = 'rma_assessment_session'
+  let sessionId: string | null = null
+  try {
+    sessionId = window.localStorage.getItem(SESSION_KEY)
+    if (!sessionId && typeof crypto !== 'undefined' && (crypto as any).randomUUID) {
+      sessionId = (crypto as any).randomUUID()
+      window.localStorage.setItem(SESSION_KEY, sessionId as string)
+    } else if (!sessionId) {
+      // fallback to simple timestamp id
+      sessionId = `s_${Date.now()}`
+      window.localStorage.setItem(SESSION_KEY, sessionId as string)
+    }
+  } catch (err) {
+    // ignore localStorage failures; proceed without session
+  }
+
+  const created = await createAssessment(user.value, 2, sessionId || undefined)
   if (created?.id) {
     router.push('/task-a')
   }
@@ -147,7 +173,7 @@ const requestExtra = async () => {
           <div class="mt-6 sm:mt-8">
             <Button
               v-cloak
-              class="w-full px-6 py-3 text-base sm:w-auto"
+              class="w-full px-6 py-3 text-base sm:w-auto cursor-pointer"
               :disabled="!canStart && !hasOngoingAssessment"
               @click="startAssessment"
             >
@@ -162,7 +188,11 @@ const requestExtra = async () => {
             <div v-cloak v-if="!isLoading && !canStart" class="mt-3 text-xs text-white/80">
               {{ startBlockReason }}
             </div>
-            <div v-cloak v-if="!isLoading && !canStart" class="mt-4 flex items-center justify-center gap-2">
+            <div
+              v-cloak
+              v-if="!isLoading && !canStart"
+              class="mt-4 flex items-center justify-center gap-2"
+            >
               <Button
                 class="px-4 py-2"
                 variant="secondary"
@@ -179,7 +209,10 @@ const requestExtra = async () => {
       <!-- Leaderboard Section -->
       <section class="order-1 flex items-center justify-center lg:order-2">
         <div class="w-full max-w-sm sm:max-w-md">
-          <div v-if="hasPerfectScore" class="mb-4 rounded-lg bg-gradient-to-r from-yellow-400 to-yellow-200 p-4 shadow-md text-center">
+          <div
+            v-if="hasPerfectScore"
+            class="mb-4 rounded-lg bg-gradient-to-r from-yellow-400 to-yellow-200 p-4 text-center shadow-md"
+          >
             <div class="flex items-center justify-center space-x-3">
               <div class="text-3xl">🏆</div>
               <div class="text-left">

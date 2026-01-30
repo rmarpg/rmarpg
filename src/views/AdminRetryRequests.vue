@@ -10,24 +10,38 @@
         <div class="flex items-center gap-2">
           <button
             class="rounded-md px-3 py-1 text-sm"
-            :class="statusFilter === 'pending' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'"
+            :class="
+              statusFilter === 'pending' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'
+            "
             @click="setFilter('pending')"
-          >Pending</button>
+          >
+            Pending
+          </button>
           <button
             class="rounded-md px-3 py-1 text-sm"
-            :class="statusFilter === 'approved' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-800'"
+            :class="
+              statusFilter === 'approved' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-800'
+            "
             @click="setFilter('approved')"
-          >Approved</button>
+          >
+            Approved
+          </button>
           <button
             class="rounded-md px-3 py-1 text-sm"
-            :class="statusFilter === 'denied' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-800'"
+            :class="
+              statusFilter === 'denied' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-800'
+            "
             @click="setFilter('denied')"
-          >Denied</button>
+          >
+            Denied
+          </button>
           <button
             class="rounded-md px-3 py-1 text-sm"
             :class="statusFilter === 'all' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'"
             @click="setFilter('all')"
-          >All</button>
+          >
+            All
+          </button>
         </div>
         <div class="ml-auto flex items-center gap-2">
           <input
@@ -40,13 +54,17 @@
             @click="refresh"
             :disabled="loading"
             class="rounded-md bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
-          >{{ loading ? 'Refreshing…' : 'Refresh' }}</button>
+          >
+            {{ loading ? 'Refreshing…' : 'Refresh' }}
+          </button>
         </div>
       </div>
 
       <div v-if="loading" class="py-10 text-center text-gray-500">Loading requests…</div>
       <div v-else>
-        <div v-if="filteredRequests.length === 0" class="py-10 text-center text-gray-500">No requests found.</div>
+        <div v-if="filteredRequests.length === 0" class="py-10 text-center text-gray-500">
+          No requests found.
+        </div>
         <div v-else class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
@@ -62,7 +80,9 @@
             </thead>
             <tbody class="divide-y divide-gray-200 bg-white">
               <tr v-for="req in filteredRequests" :key="req.id">
-                <td class="px-4 py-2 text-sm text-gray-900">{{ req.learner_name || req.learner_id }}</td>
+                <td class="px-4 py-2 text-sm text-gray-900">
+                  {{ req.learner_name || req.learner_id }}
+                </td>
                 <td class="px-4 py-2 text-sm">
                   <span
                     :class="{
@@ -70,11 +90,14 @@
                       'rounded-md bg-green-100 px-2 py-1 text-green-800': req.status === 'approved',
                       'rounded-md bg-red-100 px-2 py-1 text-red-800': req.status === 'denied',
                     }"
-                  >{{ req.status }}</span>
+                    >{{ req.status }}</span
+                  >
                 </td>
                 <td class="px-4 py-2 text-sm text-gray-700">{{ req.reason || '—' }}</td>
                 <td class="px-4 py-2 text-sm">
-                  <span :class="req.used ? 'text-green-700' : 'text-gray-700'">{{ req.used ? 'Yes' : 'No' }}</span>
+                  <span :class="req.used ? 'text-green-700' : 'text-gray-700'">{{
+                    req.used ? 'Yes' : 'No'
+                  }}</span>
                 </td>
                 <td class="px-4 py-2 text-sm text-gray-700">{{ formatDate(req.created_at) }}</td>
                 <td class="px-4 py-2 text-sm text-gray-700">{{ req.approved_by_name || '—' }}</td>
@@ -84,17 +107,23 @@
                       class="rounded-md bg-green-600 px-3 py-1 text-white hover:bg-green-700 disabled:opacity-50"
                       :disabled="req.status === 'approved'"
                       @click="approve(req)"
-                    >Approve</button>
+                    >
+                      Approve
+                    </button>
                     <button
                       class="rounded-md bg-red-600 px-3 py-1 text-white hover:bg-red-700 disabled:opacity-50"
                       :disabled="req.status === 'denied'"
                       @click="deny(req)"
-                    >Deny</button>
+                    >
+                      Deny
+                    </button>
                     <button
                       class="rounded-md bg-gray-600 px-3 py-1 text-white hover:bg-gray-700 disabled:opacity-50"
                       :disabled="req.used"
                       @click="markUsed(req)"
-                    >Mark Used</button>
+                    >
+                      Mark Used
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -144,12 +173,13 @@ const formatDate = (iso: string) => {
 }
 
 const filteredRequests = computed(() => {
-  const list = statusFilter.value === 'all'
-    ? requests.value
-    : requests.value.filter(r => r.status === statusFilter.value)
+  const list =
+    statusFilter.value === 'all'
+      ? requests.value
+      : requests.value.filter((r) => r.status === statusFilter.value)
   if (!search.value) return list
   const needle = search.value.toLowerCase()
-  return list.filter(r => (r.learner_name || '').toLowerCase().includes(needle))
+  return list.filter((r) => (r.learner_name || '').toLowerCase().includes(needle))
 })
 
 const refresh = async () => {
@@ -158,7 +188,8 @@ const refresh = async () => {
     // Fetch requests and join minimal profile names
     const { data, error } = await supabase
       .from('assessment_retry_requests')
-      .select(`
+      .select(
+        `
         id,
         learner_id,
         status,
@@ -168,7 +199,8 @@ const refresh = async () => {
         approved_by,
         profiles:learner_id (first_name, last_name),
         approver:approved_by (first_name, last_name)
-      `)
+      `,
+      )
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -207,7 +239,11 @@ const approve = async (req: RetryRow) => {
   try {
     const { error } = await supabase
       .from('assessment_retry_requests')
-      .update({ status: 'approved', approved_by: user.value.id, approved_at: new Date().toISOString() })
+      .update({
+        status: 'approved',
+        approved_by: user.value.id,
+        approved_at: new Date().toISOString(),
+      })
       .eq('id', req.id)
     if (error) {
       console.error('Approve failed:', error)
@@ -225,7 +261,11 @@ const deny = async (req: RetryRow) => {
   try {
     const { error } = await supabase
       .from('assessment_retry_requests')
-      .update({ status: 'denied', approved_by: user.value.id, approved_at: new Date().toISOString() })
+      .update({
+        status: 'denied',
+        approved_by: user.value.id,
+        approved_at: new Date().toISOString(),
+      })
       .eq('id', req.id)
     if (error) {
       console.error('Deny failed:', error)

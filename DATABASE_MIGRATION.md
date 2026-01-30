@@ -21,6 +21,7 @@ create table public.assessments (
    task_i_score integer null default 0,
    task_j_score integer null default 0,
    task_k_score integer null default 0,
+   task_l_score integer null default 0,
    total_score integer null default 0,
    overall_score numeric(5, 2) null,
    created_at timestamp with time zone null default now(),
@@ -49,7 +50,18 @@ ADD COLUMN task_g_progress JSONB,
 ADD COLUMN task_h_progress JSONB,
 ADD COLUMN task_i_progress JSONB,
 ADD COLUMN task_j_progress JSONB,
-ADD COLUMN task_k_progress JSONB;
+ADD COLUMN task_k_progress JSONB,
+ADD COLUMN task_l_progress JSONB;
+
+-- If you already run the migration above and only need to add Task L later, run:
+-- ALTER TABLE assessments ADD COLUMN task_l_score integer null default 0;
+-- Optionally backfill cached per-task column from assessment_task_scores:
+-- UPDATE assessments
+-- SET task_l_score = s.score
+-- FROM (
+--   SELECT assessment_id, score FROM assessment_task_scores WHERE task = 'L'
+-- ) s
+-- WHERE s.assessment_id = assessments.id; 
 ```
 
 ### Add Retry Request Support (Attempt Limits)
@@ -186,7 +198,8 @@ DROP COLUMN task_g_progress,
 DROP COLUMN task_h_progress,
 DROP COLUMN task_i_progress,
 DROP COLUMN task_j_progress,
-DROP COLUMN task_k_progress;
+DROP COLUMN task_k_progress,
+DROP COLUMN task_l_progress;
 ```
 
 To remove the retry request support:

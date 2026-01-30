@@ -100,6 +100,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/task-l',
+      name: 'TaskL',
+      component: () => import('@/views/TaskL.vue'),
+      meta: { requiresAuth: true},
+    },
+    {
       path: '/summary',
       name: 'summary',
       component: () => import('@/views/Summary.vue'),

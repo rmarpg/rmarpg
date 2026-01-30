@@ -156,7 +156,7 @@
           <!-- Reset and Submit buttons -->
           <div class="flex justify-center space-x-4">
             <Button
-              @click="!hasAnsweredCurrentQuestion && resetPattern"
+              @click="!hasAnsweredCurrentQuestion && resetPattern()"
               :disabled="hasAnsweredCurrentQuestion"
               variant="outline"
               class="px-6 py-2"
@@ -221,7 +221,7 @@
           <!-- Submit button -->
           <div class="flex justify-center space-x-4">
             <Button
-              @click="!hasAnsweredCurrentQuestion && clearK3Selection"
+              @click="!hasAnsweredCurrentQuestion && clearK3Selection()"
               :disabled="hasAnsweredCurrentQuestion"
               variant="outline"
               class="px-6 py-2"
@@ -285,7 +285,7 @@
           <!-- Submit button -->
           <div class="flex justify-center space-x-4">
             <Button
-              @click="!hasAnsweredCurrentQuestion && clearK4Selection"
+              @click="!hasAnsweredCurrentQuestion && clearK4Selection()"
               :disabled="hasAnsweredCurrentQuestion"
               variant="outline"
               class="px-6 py-2"
@@ -613,25 +613,13 @@ const taskData = computed(() => {
         id: 'K1',
         prompt: 'Name the shapes in the pattern.',
         type: 'short_answer',
-        answer: 'circle, half-circle, square', // Normalized answer (half-circle and semi-circle treated as same)
+        answer: 'circle, half-circle, square',
       },
       {
         id: 'K2',
         prompt: 'Draw the missing shapes in the pattern (circle, half-circle, square, circle).',
         type: 'drawing',
         answer: 'circle, half-circle, square, circle',
-      },
-      {
-        id: 'K3',
-        prompt: 'Encircle the figure that have a flat surface.',
-        type: 'click_select',
-        answer: 'pyramid,rectangle',
-      },
-      {
-        id: 'K4',
-        prompt: 'Encircle the figures that have a curved surface.',
-        type: 'click_select',
-        answer: 'cone,sphere',
       },
     ],
   }
@@ -651,9 +639,10 @@ const onTaskComplete = async (taskAnswers: Record<string, string>) => {
   questions.forEach((question, questionIndex) => {
     const userAnswer = taskAnswers[question.id] || ''
     // Last question gets the remainder points
-    const pointsForThisQuestion = questionIndex === questions.length - 1
-      ? basePointsPerQuestion + remainder
-      : basePointsPerQuestion
+    const pointsForThisQuestion =
+      questionIndex === questions.length - 1
+        ? basePointsPerQuestion + remainder
+        : basePointsPerQuestion
 
     if (
       question.id === 'K1' ||
@@ -775,18 +764,6 @@ const onTaskComplete = async (taskAnswers: Record<string, string>) => {
       const success = await updateTaskScore('K', totalScore)
       if (success) {
         console.log('Task K score saved successfully')
-
-        // Mark assessment as completed since Task K is the final task
-        const { error } = await supabase
-          .from('assessments')
-          .update({ completed_at: new Date().toISOString() })
-          .eq('id', assessment.id)
-
-        if (error) {
-          console.error('Failed to mark assessment as complete:', error)
-        } else {
-          console.log('Assessment marked as complete')
-        }
       } else {
         console.error('Failed to save Task K score')
       }
@@ -794,18 +771,18 @@ const onTaskComplete = async (taskAnswers: Record<string, string>) => {
       console.error('No current assessment found and unable to create one')
     }
 
-    // Navigate to results page after save attempt
-    router.push('/results')
+    // Navigate to Task L after save attempt
+    router.push('/task-l')
   } catch (e) {
     console.error('Error in task completion:', e)
     // Still navigate even on error
-    router.push('/results')
+    router.push('/task-l')
   }
 }
 
 const onTimeUp = () => {
   console.log('Time up for Task K')
-  router.push('/results')
+  router.push('/task-l')
 }
 
 // Initialize assessment when component mounts

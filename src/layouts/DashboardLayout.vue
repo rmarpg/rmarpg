@@ -180,7 +180,12 @@ onUnmounted(() => {
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M3 11h18M5 19h14a2 2 0 002-2v-4H3v4a2 2 0 002 2z" />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M8 7V3m8 4V3M3 11h18M5 19h14a2 2 0 002-2v-4H3v4a2 2 0 002 2z"
+            />
           </svg>
           <span v-if="sidebarOpen || isMobile" class="truncate">Retry Requests</span>
         </RouterLink>

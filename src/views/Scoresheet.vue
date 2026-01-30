@@ -316,6 +316,18 @@ watch(selectedSection, async () => {
                     {{ assessment.task_k_score }}
                   </div>
                 </div>
+                <div class="text-center">
+                  <div class="mb-1 text-xs text-gray-500">L</div>
+                  <div
+                    class="text-sm font-medium"
+                    :class="{
+                      'text-green-600': assessment.task_l_score > 0,
+                      'text-gray-400': assessment.task_l_score === 0,
+                    }"
+                  >
+                    {{ assessment.task_l_score }}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -408,6 +420,11 @@ watch(selectedSection, async () => {
                   class="border border-gray-300 px-1 py-2 text-center text-xs font-semibold text-white lg:px-2 lg:text-sm"
                 >
                   Task K
+                </th>
+                <th
+                  class="border border-gray-300 px-1 py-2 text-center text-xs font-semibold text-white lg:px-2 lg:text-sm"
+                >
+                  Task L
                 </th>
                 <th
                   class="border border-gray-300 px-2 py-2 text-center text-xs font-semibold text-white lg:px-3 lg:text-sm"

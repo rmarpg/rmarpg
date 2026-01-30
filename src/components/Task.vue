@@ -7,12 +7,7 @@
     >
       <div class="flex items-center justify-between">
         <div class="flex items-center space-x-3">
-          <svg
-            class="h-5 w-5 text-blue-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -163,6 +158,7 @@
             :feedbackState="feedbackState"
             :isShowingFeedback="isShowingFeedback"
             :hasAnsweredCurrentQuestion="hasAnsweredCurrentQuestion"
+            :clearAnswer="clearChildAnswer"
           ></slot>
         </div>
       </div>
@@ -288,7 +284,10 @@
                   ></path>
                 </svg>
               </div>
-              <div v-else class="flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+              <div
+                v-else
+                class="flex h-16 w-16 items-center justify-center rounded-full bg-red-100"
+              >
                 <svg
                   class="h-8 w-8 text-red-600"
                   fill="none"
@@ -411,8 +410,7 @@ const emit = defineEmits<{
 }>()
 
 // Initialize composables
-const { currentAssessment, saveTaskProgress, loadTaskProgress, clearTaskProgress } =
-  useAssessment()
+const { currentAssessment, saveTaskProgress, loadTaskProgress, clearTaskProgress, recordSubtaskScore } = useAssessment()
 const { user } = useAuth()
 
 // State
@@ -703,6 +701,29 @@ const handleAnswer = (answer: string) => {
 
   // Emit feedback event for task-specific handling
   emit('answerFeedback', isCorrect, currentQuestion.value.id)
+
+  // Record per-subtask score (questions within a task)
+  try {
+    if (currentAssessment.value?.id && recordSubtaskScore) {
+      const numQuestions = props.task.questions.length || 1
+      // Use fractional per-subtask points so totals can be fractional and sum to task.points
+      const perSubtaskPoints = Number(props.task.points) / Number(numQuestions)
+
+      let subtaskScore = 0
+      if (currentTaskKScore.value && currentTaskKScore.value.total) {
+        const ratio = Math.min(1, currentTaskKScore.value.correct / currentTaskKScore.value.total)
+        subtaskScore = ratio * perSubtaskPoints
+      } else {
+        subtaskScore = isCorrect ? perSubtaskPoints : 0
+      }
+
+      // Minimal progress metadata for subtask
+      const subtaskProgress = { answer, updated_at: new Date().toISOString() }
+      recordSubtaskScore(currentAssessment.value.id, props.task.id, String(currentQuestionIndex.value + 1), subtaskScore, subtaskProgress).catch(console.error)
+    }
+  } catch (err) {
+    console.error('Failed to record subtask score:', err)
+  }
 }
 
 // Task K validation strategies
@@ -1063,6 +1084,18 @@ const saveProgress = async () => {
     await saveTaskProgress(currentAssessment.value.id, props.task.id, progress)
   } catch (error) {
     console.error('Failed to save task progress to database:', error)
+  }
+}
+
+// Allow child views to clear the parent's recorded answer for the current question
+const clearChildAnswer = async () => {
+  try {
+    answers.value[currentQuestion.value.id] = ''
+    hasAnsweredCurrentQuestion.value = false
+    // Persist the cleared state
+    await saveProgress()
+  } catch (error) {
+    console.error('Failed to clear child answer:', error)
   }
 }
 
