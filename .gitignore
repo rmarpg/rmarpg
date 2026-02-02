@@ -30,3 +30,7 @@ coverage
 *.tsbuildinfo
 .env
 .env.local
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/

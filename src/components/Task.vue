@@ -410,7 +410,13 @@ const emit = defineEmits<{
 }>()
 
 // Initialize composables
-const { currentAssessment, saveTaskProgress, loadTaskProgress, clearTaskProgress, recordSubtaskScore } = useAssessment()
+const {
+  currentAssessment,
+  saveTaskProgress,
+  loadTaskProgress,
+  clearTaskProgress,
+  recordSubtaskScore,
+} = useAssessment()
 const { user } = useAuth()
 
 // State
@@ -684,8 +690,16 @@ const speakQuestion = () => {
 }
 
 const handleAnswer = (answer: string) => {
+  console.log('[handleAnswer] Called:', {
+    questionId: currentQuestion.value.id,
+    answer,
+    hasAssessment: !!currentAssessment.value,
+    assessmentId: currentAssessment.value?.id,
+  })
+
   // Don't allow new answers if already answered this question
   if (hasAnsweredCurrentQuestion.value) {
+    console.log('[handleAnswer] Question already answered, skipping')
     return
   }
 
@@ -704,6 +718,15 @@ const handleAnswer = (answer: string) => {
 
   // Record per-subtask score (questions within a task)
   try {
+    console.log('[Subtask Recording] Checking conditions:', {
+      hasAssessmentId: !!currentAssessment.value?.id,
+      assessmentId: currentAssessment.value?.id,
+      hasRecordFunction: typeof recordSubtaskScore === 'function',
+      taskId: props.task.id,
+      questionId: currentQuestion.value.id,
+      currentAssessmentFullObject: currentAssessment.value,
+    })
+
     if (currentAssessment.value?.id && recordSubtaskScore) {
       const numQuestions = props.task.questions.length || 1
       // Use fractional per-subtask points so totals can be fractional and sum to task.points
@@ -719,7 +742,35 @@ const handleAnswer = (answer: string) => {
 
       // Minimal progress metadata for subtask
       const subtaskProgress = { answer, updated_at: new Date().toISOString() }
-      recordSubtaskScore(currentAssessment.value.id, props.task.id, String(currentQuestionIndex.value + 1), subtaskScore, subtaskProgress).catch(console.error)
+      // Use the actual question ID (e.g., "I1", "I2", "I3a") as the subtask identifier
+      const subtaskId = currentQuestion.value.id
+
+      console.log('[Subtask Recording] Recording subtask:', {
+        assessmentId: currentAssessment.value.id,
+        taskId: props.task.id,
+        subtaskId,
+        score: subtaskScore,
+        isCorrect,
+        perSubtaskPoints,
+      })
+
+      recordSubtaskScore(
+        currentAssessment.value.id,
+        props.task.id,
+        subtaskId,
+        subtaskScore,
+        subtaskProgress,
+      )
+        .then(() => {
+          console.log('[Subtask Recording] Successfully recorded subtask:', subtaskId)
+        })
+        .catch((err) => {
+          console.error('[Subtask Recording] Error recording subtask:', err)
+        })
+    } else {
+      console.warn(
+        '[Subtask Recording] Skipped - missing assessment ID or recordSubtaskScore function',
+      )
     }
   } catch (err) {
     console.error('Failed to record subtask score:', err)

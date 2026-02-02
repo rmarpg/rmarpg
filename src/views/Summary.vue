@@ -12,7 +12,7 @@
             <label class="mb-1 block text-sm font-medium text-gray-700">Section</label>
             <select
               v-model="selectedSection"
-              class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none mb-3"
+              class="mb-3 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             >
               <option value="Grade 2">Grade 2</option>
             </select>
@@ -32,11 +32,7 @@
               v-model="selectedQuestionId"
               class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             >
-              <option
-                v-for="q in currentTask?.questions || []"
-                :key="q.id"
-                :value="q.id"
-              >
+              <option v-for="q in currentTask?.questions || []" :key="q.id" :value="q.id">
                 {{ q.id }} — {{ q.prompt || q.title || q.text || q.id }}
               </option>
             </select>
@@ -67,7 +63,7 @@
 
         <div v-else class="grid gap-6 lg:grid-cols-2">
           <!-- Students table -->
-          <div class="rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 overflow-auto">
+          <div class="overflow-auto rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200">
             <h3 class="mb-3 text-lg font-semibold text-gray-900">Students</h3>
             <table class="min-w-full divide-y divide-gray-200 text-sm">
               <thead class="bg-gray-50">
@@ -85,11 +81,21 @@
                     {{ r.assessment?.profiles?.first_name }} {{ r.assessment?.profiles?.last_name }}
                   </td>
                   <td class="px-3 py-2">{{ r.assessment?.profiles?.section || '-' }}</td>
-                  <td class="px-3 py-2">{{ (r.assessment?.learner_id || '')?.slice(0,8) }}</td>
-                  <td class="px-3 py-2">{{ r.assessment ? ((r.assessment._taskScores?.[selectedTaskId.toUpperCase()]?.score) ?? '-') : '-' }}</td>
+                  <td class="px-3 py-2">{{ (r.assessment?.learner_id || '')?.slice(0, 8) }}</td>
+                  <td class="px-3 py-2">
+                    {{
+                      r.assessment
+                        ? (r.assessment._taskScores?.[selectedTaskId.toUpperCase()]?.score ?? '-')
+                        : '-'
+                    }}
+                  </td>
                   <td class="px-3 py-2">
                     <span
-                      :class="r.correct ? 'inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800' : 'inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800'"
+                      :class="
+                        r.correct
+                          ? 'inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800'
+                          : 'inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800'
+                      "
                     >
                       {{ r.correct ? 'Correct' : 'Wrong' }}
                     </span>
@@ -104,11 +110,11 @@
             <h3 class="mb-3 text-lg font-semibold text-gray-900">Task Details</h3>
             <p class="text-sm text-gray-700">
               <span class="font-medium">{{ currentTask?.name }}</span>
-              ({{ selectedTaskId }}) has {{ questionsCount }} questions.
-              Based on your score, approximately
-              <span class="text-green-700 font-semibold">{{ correctCount }}</span>
+              ({{ selectedTaskId }}) has {{ questionsCount }} questions. Based on your score,
+              approximately
+              <span class="font-semibold text-green-700">{{ correctCount }}</span>
               are correct and
-              <span class="text-red-700 font-semibold">{{ wrongCount }}</span>
+              <span class="font-semibold text-red-700">{{ wrongCount }}</span>
               are wrong.
             </p>
             <p class="mt-2 text-xs text-gray-500">
@@ -127,23 +133,254 @@ import { ref, computed, onMounted, watch } from 'vue'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 // removed unused imports: useAuth, useAssessment, Assessment
 
-
 // `assessment` and the auth/assessment helpers were unused — removed to clean up.
 // `rma.json` retained in repo for storage but not imported at runtime.
 // Tasks are defined inline here so Summary doesn't depend on the JSON import.
 const tasks = [
-  { id: 'A', name: 'Number Identification', points: 4, questions: [ { id: 'A1', prompt: 'How do you read this number? (375)', type: 'short_answer', answer: 'Three hundred seventy-five' }, { id: 'A2', prompt: 'What is the place value of the digit 7 in this number?', type: 'short_answer', answer: 'Tens place' }, { id: 'A3', prompt: 'What is the value of the digit 7 in this number?', type: 'short_answer', answer: 'Seventy' }, { id: 'A4', prompt: 'What is the expanded form of this number?', type: 'short_answer', answer: '300 + 70 + 5' } ] },
-  { id: 'B', name: 'Number Discrimination', points: 1, questions: [ { id: 'B1', prompt: 'Find a three-digit number greater than 857, with digit 5 in the tens place.', type: 'numeric', possible_answers: [ '858','859','950','951','952','953','954','955','956','957','958','959' ] } ] },
-  { id: 'C', name: 'Missing Number in Patterns', points: 4, questions: [ { id: 'C1', prompt: '65, 60, 55, 50, __ , 40', type: 'numeric', answer: '45' }, { id: 'C2', prompt: '10, 13, 16, 19, 22, __', type: 'numeric', answer: '25' }, { id: 'C3', prompt: '450, 550, 650, __ , 850, 950', type: 'numeric', answer: '750' }, { id: 'C4', prompt: '350, 300, 250, 200, __ , 100', type: 'numeric', answer: '150' } ] },
-  { id: 'D', name: 'Missing Unit Fractions', points: 2, questions: [ { id: 'D1a', prompt: 'Fill in missing fraction between 1/10 and 1/7', type: 'short_answer', possible_answers: ['1/8','1/9'] }, { id: 'D1b', prompt: 'Fill in missing fraction between 1/4 and 1/2', type: 'short_answer', possible_answers: ['1/3','1/2'] } ] },
-  { id: 'E', name: 'Addition', points: 4, questions: [ { id: 'E1', prompt: 'Find the sum of the blocks representation (image shown).', type: 'numeric', answer: '355' }, { id: 'E2', prompt: 'Find the sum of the blocks representation (image shown).', type: 'numeric', answer: '282' }, { id: 'E3a', prompt: '152 + 234 = ?', type: 'numeric', answer: '386' }, { id: 'E3b', prompt: '457 + 36 = ?', type: 'numeric', answer: '493' } ] },
-  { id: 'F', name: 'Addition Word Problem', points: 1, questions: [ { id: 'F1', prompt: 'Grade 2 - Maya collected 128 bottles. Grade 2 – Agila collected 93 bottles. How many bottles were collected in all?', type: 'word_problem', answer: '221' } ] },
-  { id: 'G', name: 'Subtraction', points: 4, questions: [ { id: 'G1', prompt: 'Take away 14 mangoes from the picture of mangoes. How many are left?', type: 'numeric', answer: '21' }, { id: 'G2a', prompt: '92 - 21 = ?', type: 'numeric', answer: '71' }, { id: 'G2b', prompt: '137 - 75 = ?', type: 'numeric', answer: '62' }, { id: 'G2c', prompt: '396 - 178 = ?', type: 'numeric', answer: '218' } ] },
-  { id: 'H', name: 'Subtraction Word Problem', points: 2, questions: [ { id: 'H1', prompt: 'Jose harvested 125 mangoes. He gave 12 to his neighbor. How many were left?', type: 'word_problem', answer: '113' }, { id: 'H2', prompt: 'Carla bought clothes for P225.00. How much was her change if she gave P250.00?', type: 'word_problem', answer: '25' } ] },
-  { id: 'I', name: 'Multiplication', points: 6, questions: [ { id: 'I1', prompt: 'Which multiplication sentence best describes the grouping of candies? (A, B, or C)', type: 'multiple_choice', options: ['A','B','C'], answer: 'C' }, { id: 'I2', prompt: 'Which multiplication sentence best describes the arrangement of stars? (A, B, or C)', type: 'multiple_choice', options: ['A','B','C'], answer: 'A' }, { id: 'I3a', prompt: '4 x 1 = ?', type: 'numeric', answer: '4' }, { id: 'I3b', prompt: '5 x 4 = ?', type: 'numeric', answer: '20' }, { id: 'I3c', prompt: '__ x 9 = 0', type: 'numeric', answer: '0' }, { id: 'I3d', prompt: '2 x __ = 18', type: 'numeric', answer: '9' } ] },
-  { id: 'J', name: 'Division', points: 4, questions: [ { id: 'J1', prompt: 'Divide the balls equally into three groups. How many balls are in each group?', type: 'numeric', answer: '4' }, { id: 'J2a', prompt: '25 ÷ 5 = ?', type: 'numeric', answer: '5' }, { id: 'J2b', prompt: '32 ÷ 4 = ?', type: 'numeric', answer: '8' }, { id: 'J3', prompt: 'Word problem: Fifteen papayas are to be placed in baskets. If each basket contains 3 papayas, how many baskets are needed?', type: 'word_problem', answer: '5' } ] },
-{ id: 'K', name: 'Geometric Pattern', points: 7, questions: [ { id: 'K1', prompt: 'Name the shapes in the pattern.', type: 'short_answer', possible_answers: ['circle','half-circle','semi-circle','square'] }, { id: 'K2', prompt: 'Draw the missing shapes in the pattern (circle, half-circle, square, circle).', type: 'drawing', answer: ['circle','half-circle','square','circle'] } ] },
-  { id: 'L', name: '3D Shapes', points: 5, questions: [ { id: 'L1', prompt: 'Encircle the figures that have a flat surface.', type: 'click_select', answer: 'pyramid,rectangle' }, { id: 'L2', prompt: 'Encircle the figures that have a curved surface.', type: 'click_select', answer: 'cone,sphere' } ] }
+  {
+    id: 'A',
+    name: 'Number Identification',
+    points: 4,
+    questions: [
+      {
+        id: 'A1',
+        prompt: 'How do you read this number? (375)',
+        type: 'short_answer',
+        answer: 'Three hundred seventy-five',
+      },
+      {
+        id: 'A2',
+        prompt: 'What is the place value of the digit 7 in this number?',
+        type: 'short_answer',
+        answer: 'Tens place',
+      },
+      {
+        id: 'A3',
+        prompt: 'What is the value of the digit 7 in this number?',
+        type: 'short_answer',
+        answer: 'Seventy',
+      },
+      {
+        id: 'A4',
+        prompt: 'What is the expanded form of this number?',
+        type: 'short_answer',
+        answer: '300 + 70 + 5',
+      },
+    ],
+  },
+  {
+    id: 'B',
+    name: 'Number Discrimination',
+    points: 1,
+    questions: [
+      {
+        id: 'B1',
+        prompt: 'Find a three-digit number greater than 857, with digit 5 in the tens place.',
+        type: 'numeric',
+        possible_answers: [
+          '858',
+          '859',
+          '950',
+          '951',
+          '952',
+          '953',
+          '954',
+          '955',
+          '956',
+          '957',
+          '958',
+          '959',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'C',
+    name: 'Missing Number in Patterns',
+    points: 4,
+    questions: [
+      { id: 'C1', prompt: '65, 60, 55, 50, __ , 40', type: 'numeric', answer: '45' },
+      { id: 'C2', prompt: '10, 13, 16, 19, 22, __', type: 'numeric', answer: '25' },
+      { id: 'C3', prompt: '450, 550, 650, __ , 850, 950', type: 'numeric', answer: '750' },
+      { id: 'C4', prompt: '350, 300, 250, 200, __ , 100', type: 'numeric', answer: '150' },
+    ],
+  },
+  {
+    id: 'D',
+    name: 'Missing Unit Fractions',
+    points: 2,
+    questions: [
+      {
+        id: 'D1a',
+        prompt: 'Fill in missing fraction between 1/10 and 1/7',
+        type: 'short_answer',
+        possible_answers: ['1/8', '1/9'],
+      },
+      {
+        id: 'D1b',
+        prompt: 'Fill in missing fraction between 1/4 and 1/2',
+        type: 'short_answer',
+        possible_answers: ['1/3', '1/2'],
+      },
+    ],
+  },
+  {
+    id: 'E',
+    name: 'Addition',
+    points: 4,
+    questions: [
+      {
+        id: 'E1',
+        prompt: 'Find the sum of the blocks representation (image shown).',
+        type: 'numeric',
+        answer: '355',
+      },
+      {
+        id: 'E2',
+        prompt: 'Find the sum of the blocks representation (image shown).',
+        type: 'numeric',
+        answer: '282',
+      },
+      { id: 'E3a', prompt: '152 + 234 = ?', type: 'numeric', answer: '386' },
+      { id: 'E3b', prompt: '457 + 36 = ?', type: 'numeric', answer: '493' },
+    ],
+  },
+  {
+    id: 'F',
+    name: 'Addition Word Problem',
+    points: 1,
+    questions: [
+      {
+        id: 'F1',
+        prompt:
+          'Grade 2 - Maya collected 128 bottles. Grade 2 – Agila collected 93 bottles. How many bottles were collected in all?',
+        type: 'word_problem',
+        answer: '221',
+      },
+    ],
+  },
+  {
+    id: 'G',
+    name: 'Subtraction',
+    points: 4,
+    questions: [
+      {
+        id: 'G1',
+        prompt: 'Take away 14 mangoes from the picture of mangoes. How many are left?',
+        type: 'numeric',
+        answer: '21',
+      },
+      { id: 'G2a', prompt: '92 - 21 = ?', type: 'numeric', answer: '71' },
+      { id: 'G2b', prompt: '137 - 75 = ?', type: 'numeric', answer: '62' },
+      { id: 'G2c', prompt: '396 - 178 = ?', type: 'numeric', answer: '218' },
+    ],
+  },
+  {
+    id: 'H',
+    name: 'Subtraction Word Problem',
+    points: 2,
+    questions: [
+      {
+        id: 'H1',
+        prompt: 'Jose harvested 125 mangoes. He gave 12 to his neighbor. How many were left?',
+        type: 'word_problem',
+        answer: '113',
+      },
+      {
+        id: 'H2',
+        prompt: 'Carla bought clothes for P225.00. How much was her change if she gave P250.00?',
+        type: 'word_problem',
+        answer: '25',
+      },
+    ],
+  },
+  {
+    id: 'I',
+    name: 'Multiplication',
+    points: 6,
+    questions: [
+      {
+        id: 'I1',
+        prompt:
+          'Which multiplication sentence best describes the grouping of candies? (A, B, or C)',
+        type: 'multiple_choice',
+        options: ['A', 'B', 'C'],
+        answer: 'C',
+      },
+      {
+        id: 'I2',
+        prompt:
+          'Which multiplication sentence best describes the arrangement of stars? (A, B, or C)',
+        type: 'multiple_choice',
+        options: ['A', 'B', 'C'],
+        answer: 'A',
+      },
+      { id: 'I3a', prompt: '4 x 1 = ?', type: 'numeric', answer: '4' },
+      { id: 'I3b', prompt: '5 x 4 = ?', type: 'numeric', answer: '20' },
+      { id: 'I3c', prompt: '__ x 9 = 0', type: 'numeric', answer: '0' },
+      { id: 'I3d', prompt: '2 x __ = 18', type: 'numeric', answer: '9' },
+    ],
+  },
+  {
+    id: 'J',
+    name: 'Division',
+    points: 4,
+    questions: [
+      {
+        id: 'J1',
+        prompt: 'Divide the balls equally into three groups. How many balls are in each group?',
+        type: 'numeric',
+        answer: '4',
+      },
+      { id: 'J2a', prompt: '25 ÷ 5 = ?', type: 'numeric', answer: '5' },
+      { id: 'J2b', prompt: '32 ÷ 4 = ?', type: 'numeric', answer: '8' },
+      {
+        id: 'J3',
+        prompt:
+          'Word problem: Fifteen papayas are to be placed in baskets. If each basket contains 3 papayas, how many baskets are needed?',
+        type: 'word_problem',
+        answer: '5',
+      },
+    ],
+  },
+  {
+    id: 'K',
+    name: 'Geometric Pattern',
+    points: 7,
+    questions: [
+      {
+        id: 'K1',
+        prompt: 'Name the shapes in the pattern.',
+        type: 'short_answer',
+        possible_answers: ['circle', 'half-circle', 'semi-circle', 'square'],
+      },
+      {
+        id: 'K2',
+        prompt: 'Draw the missing shapes in the pattern (circle, half-circle, square, circle).',
+        type: 'drawing',
+        answer: ['circle', 'half-circle', 'square', 'circle'],
+      },
+    ],
+  },
+  {
+    id: 'L',
+    name: '3D Shapes',
+    points: 5,
+    questions: [
+      {
+        id: 'L1',
+        prompt: 'Encircle the figures that have a flat surface.',
+        type: 'click_select',
+        answer: 'pyramid,rectangle',
+      },
+      {
+        id: 'L2',
+        prompt: 'Encircle the figures that have a curved surface.',
+        type: 'click_select',
+        answer: 'cone,sphere',
+      },
+    ],
+  },
 ] as Array<{ id: string; name: string; points: number; questions: any[] }>
 
 const selectedTaskId = ref<string>(tasks[0]?.id || 'A')
@@ -157,7 +394,9 @@ const selectedSection = ref<string>('Grade 2')
 const learnerAssessments = ref<Array<any>>([])
 
 const currentTask = computed(() => tasks.find((t) => t.id === selectedTaskId.value))
-const currentQuestion = computed(() => currentTask.value?.questions?.find((q) => q.id === selectedQuestionId.value))
+const currentQuestion = computed(() =>
+  currentTask.value?.questions?.find((q) => q.id === selectedQuestionId.value),
+)
 const questionsCount = computed(() => currentTask.value?.questions?.length || 0)
 
 // Build per-question correctness by checking saved progress (answers) when present,
@@ -169,29 +408,78 @@ const studentResults = computed(() => {
   if (!question) return results
 
   for (const a of learnerAssessments.value) {
-  const taskKey = selectedTaskId.value.toUpperCase()
-  const taskMap = (a as any)._taskScores || {}
-  // Prefer subtask entry for the selected question, fall back to task-level (subtask='')
-  const subtaskKey = question.id
-  const entry = (taskMap[taskKey] && (taskMap[taskKey][subtaskKey] || taskMap[taskKey][''])) || {}
-  const progress = entry?.progress
+    const taskKey = selectedTaskId.value.toUpperCase()
+    const taskMap = (a as any)._taskScores || {}
+    // Prefer subtask entry for the selected question, fall back to task-level (subtask='')
+    const subtaskKey = question.id
+    const entry = (taskMap[taskKey] && (taskMap[taskKey][subtaskKey] || taskMap[taskKey][''])) || {}
+    const progress = entry?.progress
+
+    const learnerIdShort = a.learner_id?.slice(0, 8) || 'unknown'
+    const learnerName = `${a.profiles?.first_name || ''} ${a.profiles?.last_name || ''}`.trim()
+
+    console.log(`[Summary] Checking learner ${learnerIdShort} (${learnerName}):`, {
+      taskKey,
+      subtaskKey,
+      hasTaskMap: !!taskMap[taskKey],
+      hasSubtaskEntry: !!(taskMap[taskKey] && taskMap[taskKey][subtaskKey]),
+      hasTaskLevelEntry: !!(taskMap[taskKey] && taskMap[taskKey]['']),
+      entry_score: entry?.score,
+      progress_exists: !!progress,
+      progress_has_answers: !!(progress && progress.answers),
+      progress_has_answer: !!(progress && progress.answer),
+      progress_keys: progress ? Object.keys(progress) : [],
+    })
 
     let isCorrect = false
+    let ans = undefined
 
-    if (progress && progress.answers && typeof progress.answers === 'object') {
-      const ans = progress.answers[question.id]
+    // Check for both "answers" (plural - task-level) and "answer" (singular - subtask-level)
+    if (progress && typeof progress === 'object') {
+      // Try subtask-level "answer" field first (for individual question responses)
+      if (progress.answer !== undefined && progress.answer !== null) {
+        ans = progress.answer
+        console.log(`[Summary] Found answer (singular) for ${learnerIdShort}:`, ans)
+      }
+      // Fall back to task-level "answers" object
+      else if (progress.answers && typeof progress.answers === 'object') {
+        ans = progress.answers[question.id]
+        console.log(`[Summary] Found answer in answers[${question.id}] for ${learnerIdShort}:`, ans)
+      }
+
       if (ans !== undefined && ans !== null) {
         const normalize = (s: any) => String(s).toLowerCase().trim()
         const expected = question.answer
+        const normalizedAns = normalize(ans)
+        const normalizedExpected = normalize(expected)
+
         if (expected !== undefined) {
-          isCorrect = normalize(ans) === normalize(expected)
+          isCorrect = normalizedAns === normalizedExpected
+          console.log(`[Summary] Answer comparison for ${learnerIdShort}:`, {
+            raw_answer: ans,
+            normalized_answer: normalizedAns,
+            expected: expected,
+            normalized_expected: normalizedExpected,
+            isCorrect,
+          })
+        } else {
+          console.log(`[Summary] No expected answer defined for question ${question.id}`)
         }
+      } else {
+        console.log(`[Summary] No answer found for ${learnerIdShort}, using fallback scoring`)
       }
-    } else {
-      // Fallback: check stored per-task score. Use the task's configured `points`.
+    }
+
+    // Fallback: check stored per-task score if no answer found
+    if (ans === undefined && entry.score !== undefined) {
       const score = Number(entry.score ?? 0)
       const taskMax = currentTask.value?.points ?? 0
       isCorrect = taskMax > 0 ? score >= taskMax : false
+      console.log(`[Summary] Using fallback scoring for ${learnerIdShort}:`, {
+        score,
+        taskMax,
+        isCorrect,
+      })
     }
 
     results.push({ assessment: a, correct: isCorrect })
@@ -217,9 +505,7 @@ const fetchLearnerAssessments = async () => {
 
     const { data, error } = await (await import('@/lib/supabase-client')).supabase
       .from('assessments')
-      .select(
-        `*, profiles!learner_id ( first_name, last_name, section )`,
-      )
+      .select(`*, profiles!learner_id ( first_name, last_name, section )`)
       .eq('grade_level', gradeLevel)
       .order('created_at', { ascending: false })
 
@@ -229,7 +515,7 @@ const fetchLearnerAssessments = async () => {
     }
 
     const byUser: Record<string, any> = {}
-    for (const a of (data || [])) {
+    for (const a of data || []) {
       // Exclude admin/system rows
       if (a?.profiles?.first_name === 'Administrator') continue
 
@@ -247,7 +533,9 @@ const fetchLearnerAssessments = async () => {
     try {
       const ids = assessments.map((a: any) => a.id).filter(Boolean)
       if (ids.length > 0) {
-        const { data: taskRows, error: taskErr } = await (await import('@/lib/supabase-client')).supabase
+        const { data: taskRows, error: taskErr } = await (
+          await import('@/lib/supabase-client')
+        ).supabase
           .from('assessment_task_scores')
           .select('assessment_id, task, subtask, score, progress')
           .in('assessment_id', ids)
@@ -261,7 +549,29 @@ const fetchLearnerAssessments = async () => {
             map[r.assessment_id][r.task] = map[r.assessment_id][r.task] || {}
             // Use empty-string subtask as task-level aggregate
             const subkey = r.subtask ?? ''
-            map[r.assessment_id][r.task][subkey] = { score: r.score, progress: r.progress }
+            // Parse progress if it's a string
+            let progress = r.progress
+            console.log(`[Summary] Raw DB row:`, {
+              assessment_id: r.assessment_id?.slice(0, 8),
+              task: r.task,
+              subtask: r.subtask || '(empty)',
+              score: r.score,
+              progress_type: typeof progress,
+              progress_preview: typeof progress === 'string' ? progress.slice(0, 100) : progress,
+            })
+            if (typeof progress === 'string') {
+              try {
+                progress = JSON.parse(progress)
+                console.log(
+                  `[Summary] Parsed progress for ${r.task}/${r.subtask || '(empty)'}:`,
+                  progress,
+                )
+              } catch (e) {
+                console.warn('Failed to parse progress JSON:', e)
+                progress = null
+              }
+            }
+            map[r.assessment_id][r.task][subkey] = { score: r.score, progress }
           }
 
           for (const a of assessments) {
