@@ -91,6 +91,7 @@
 import { ref, onMounted } from 'vue'
 import { supabase } from '@/lib/supabase-client'
 import { useAuth } from '@/composables/useAuth'
+import { getDisplayTotalScore } from '@/lib/scoreUtils'
 
 interface LeaderboardEntry {
   id: string
@@ -145,17 +146,20 @@ const fetchLeaderboard = async () => {
     }
 
     // Group by learner_id and keep highest total_score per user
+    // Calculate scores dynamically from task scores
     const byUser: Record<string, any> = {}
     for (const assessment of data) {
       const key = assessment.learner_id
       if (!key) continue
       const existing = byUser[key]
-      if (!existing || (assessment.total_score ?? 0) > (existing.total_score ?? 0)) {
+      const currentScore = getDisplayTotalScore(assessment as any)
+      const existingScore = existing ? getDisplayTotalScore(existing) : 0
+      if (!existing || currentScore > existingScore) {
         byUser[key] = assessment
       }
     }
     const grouped = Object.values(byUser)
-      .sort((a: any, b: any) => (b.total_score ?? 0) - (a.total_score ?? 0))
+      .sort((a: any, b: any) => getDisplayTotalScore(b as any) - getDisplayTotalScore(a as any))
       .slice(0, 10)
 
     // Process the grouped data
@@ -172,7 +176,7 @@ const fetchLeaderboard = async () => {
         id: assessment.id,
         learner_id: assessment.learner_id,
         learner_name: isCurrentUser ? `${baseName} (You)` : baseName,
-        total_score: assessment.total_score,
+        total_score: getDisplayTotalScore(assessment as any),
         grade_level: assessment.grade_level,
         created_at: assessment.created_at,
       }

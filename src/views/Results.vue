@@ -43,13 +43,13 @@
           <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-8 text-white">
             <div class="text-center">
               <h2 class="mb-2 text-2xl font-semibold">Your Final Score</h2>
-              <div class="mb-2 text-6xl font-bold">{{ assessment.overall_score }}%</div>
+              <div class="mb-2 text-6xl font-bold">{{ getDisplayOverallScore(assessment) }}%</div>
               <div class="text-lg opacity-90">
-                {{ assessment.total_score }} out of {{ maxPossibleScore }} points
+                {{ getDisplayTotalScore(assessment) }} out of {{ maxPossibleScore }} points
               </div>
               <div class="mt-4 inline-block rounded-full bg-white/20 px-4 py-2">
                 <span class="text-sm font-medium">{{
-                  getScoreCategory(assessment.overall_score)
+                  getScoreCategory(getDisplayOverallScore(assessment))
                 }}</span>
               </div>
             </div>
@@ -89,7 +89,10 @@
           <div class="border-t border-gray-200 bg-gray-50 px-6 py-4">
             <h4 class="mb-2 font-medium text-gray-900">Performance Insights</h4>
             <div class="text-sm text-gray-600">
-              <div v-if="assessment.overall_score >= 90" class="flex items-center text-green-700">
+              <div
+                v-if="getDisplayOverallScore(assessment) >= 90"
+                class="flex items-center text-green-700"
+              >
                 <svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                   <path
                     fill-rule="evenodd"
@@ -100,7 +103,7 @@
                 Excellent work! You've demonstrated strong mathematical reasoning skills.
               </div>
               <div
-                v-else-if="assessment.overall_score >= 70"
+                v-else-if="getDisplayOverallScore(assessment) >= 70"
                 class="flex items-center text-blue-700"
               >
                 <svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
@@ -113,7 +116,7 @@
                 Good job! You're on the right track with solid understanding in most areas.
               </div>
               <div
-                v-else-if="assessment.overall_score >= 50"
+                v-else-if="getDisplayOverallScore(assessment) >= 50"
                 class="flex items-center text-yellow-700"
               >
                 <svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
@@ -231,6 +234,7 @@ import { useAuth } from '@/composables/useAuth'
 import { useAssessment, type Assessment } from '@/composables/useAssessment'
 import RMALayout from '@/layouts/RMALayout.vue'
 import { supabase } from '@/lib/supabase-client'
+import { getDisplayTotalScore, getDisplayOverallScore, MAX_POSSIBLE_TOTAL } from '@/lib/scoreUtils'
 
 const router = useRouter()
 const { user } = useAuth()
@@ -266,7 +270,7 @@ const taskConfig = {
 }
 
 const maxPossibleScore = computed(() => {
-  return Object.values(taskConfig).reduce((sum, config) => sum + config.maxScore, 0)
+  return MAX_POSSIBLE_TOTAL
 })
 
 const taskScores = computed(() => {

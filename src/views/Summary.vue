@@ -81,13 +81,9 @@
                     {{ r.assessment?.profiles?.first_name }} {{ r.assessment?.profiles?.last_name }}
                   </td>
                   <td class="px-3 py-2">{{ r.assessment?.profiles?.section || '-' }}</td>
-                  <td class="px-3 py-2">{{ (r.assessment?.learner_id || '')?.slice(0, 8) }}</td>
+                  <td class="px-3 py-2">{{ r.assessment?.profiles?.learner_id || 'N/A' }}</td>
                   <td class="px-3 py-2">
-                    {{
-                      r.assessment
-                        ? (r.assessment._taskScores?.[selectedTaskId.toUpperCase()]?.score ?? '-')
-                        : '-'
-                    }}
+                    {{ getStudentScore(r.assessment) }}
                   </td>
                   <td class="px-3 py-2">
                     <span
@@ -131,6 +127,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 // Charting removed: use students table instead of a pie chart
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import { getDisplayTotalScore } from '@/lib/scoreUtils'
 // removed unused imports: useAuth, useAssessment, Assessment
 
 // `assessment` and the auth/assessment helpers were unused — removed to clean up.
@@ -449,17 +446,29 @@ const studentResults = computed(() => {
 
       if (ans !== undefined && ans !== null) {
         const normalize = (s: any) => String(s).toLowerCase().trim()
-        const expected = question.answer
         const normalizedAns = normalize(ans)
-        const normalizedExpected = normalize(expected)
 
-        if (expected !== undefined) {
+        // Check if question has a single answer or multiple possible answers
+        if (question.answer !== undefined) {
+          // Single answer comparison
+          const normalizedExpected = normalize(question.answer)
           isCorrect = normalizedAns === normalizedExpected
           console.log(`[Summary] Answer comparison for ${learnerIdShort}:`, {
             raw_answer: ans,
             normalized_answer: normalizedAns,
-            expected: expected,
+            expected: question.answer,
             normalized_expected: normalizedExpected,
+            isCorrect,
+          })
+        } else if (question.possible_answers && Array.isArray(question.possible_answers)) {
+          // Multiple possible answers - check if answer is in the list
+          const normalizedPossible = question.possible_answers.map((a: any) => normalize(a))
+          isCorrect = normalizedPossible.includes(normalizedAns)
+          console.log(`[Summary] Answer comparison (possible_answers) for ${learnerIdShort}:`, {
+            raw_answer: ans,
+            normalized_answer: normalizedAns,
+            possible_answers: question.possible_answers,
+            normalized_possible: normalizedPossible,
             isCorrect,
           })
         } else {
@@ -495,6 +504,28 @@ const percentCorrect = computed(() => {
   return Math.round((correctCount.value / total) * 100)
 })
 
+// Helper function to get student score for the selected question
+const getStudentScore = (assessment: any): string | number => {
+  if (!assessment) return '-'
+
+  const taskKey = selectedTaskId.value.toUpperCase()
+  const question = currentQuestion.value
+  if (!question) return '-'
+
+  const taskMap = assessment._taskScores || {}
+
+  // Get the subtask-level score for the specific question
+  // DO NOT fall back to task-level score as that's the sum of all questions
+  const subtaskKey = question.id
+  const subtaskEntry = taskMap[taskKey]?.[subtaskKey]
+  if (subtaskEntry?.score !== undefined && subtaskEntry?.score !== null) {
+    return subtaskEntry.score
+  }
+
+  // If no subtask record exists, return '-' instead of showing task total
+  return '-'
+}
+
 // chartOptions removed; rendering a students table instead
 
 // Fetch learners' best assessments for grade level
@@ -505,7 +536,7 @@ const fetchLearnerAssessments = async () => {
 
     const { data, error } = await (await import('@/lib/supabase-client')).supabase
       .from('assessments')
-      .select(`*, profiles!learner_id ( first_name, last_name, section )`)
+      .select(`*, profiles!learner_id ( first_name, last_name, section, learner_id )`)
       .eq('grade_level', gradeLevel)
       .order('created_at', { ascending: false })
 
@@ -522,7 +553,9 @@ const fetchLearnerAssessments = async () => {
       const key = a.learner_id
       if (!key) continue
       const existing = byUser[key]
-      if (!existing || (a.total_score ?? 0) > (existing.total_score ?? 0)) {
+      const currentScore = getDisplayTotalScore(a)
+      const existingScore = existing ? getDisplayTotalScore(existing) : 0
+      if (!existing || currentScore > existingScore) {
         byUser[key] = a
       }
     }

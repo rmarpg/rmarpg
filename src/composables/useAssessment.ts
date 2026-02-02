@@ -753,6 +753,7 @@ export function useAssessment() {
         task: taskKey,
         subtask: '',
         progress: progress,
+        score: 0, // Explicitly set score to 0 for progress-only records
         updated_at: new Date().toISOString(),
       }
 

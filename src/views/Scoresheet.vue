@@ -8,6 +8,7 @@ import { useAssessment, type Assessment } from '@/composables/useAssessment'
 import { useAuth } from '@/composables/useAuth'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { supabase } from '@/lib/supabase-client'
+import { getDisplayTotalScore, getDisplayOverallScore } from '@/lib/scoreUtils'
 import { onMounted, ref, watch } from 'vue'
 
 const selectedSection = ref('Rose')
@@ -29,7 +30,8 @@ const fetchAssessments = async () => {
         profiles!learner_id (
           first_name,
           last_name,
-          section
+          section,
+          learner_id
         )
       `,
       )
@@ -43,17 +45,22 @@ const fetchAssessments = async () => {
 
     // Group by learner_id and keep the highest total_score per user,
     // then apply section filter.
+    // Calculate scores dynamically from task scores
     const byUser: Record<string, any> = {}
-    for (const a of (data || [])) {
+    for (const a of data || []) {
       const key = a.learner_id
       if (!key) continue
       const existing = byUser[key]
-      if (!existing || (a.total_score ?? 0) > (existing.total_score ?? 0)) {
+      const currentScore = getDisplayTotalScore(a)
+      const existingScore = existing ? getDisplayTotalScore(existing) : 0
+      if (!existing || currentScore > existingScore) {
         byUser[key] = a
       }
     }
 
-    const grouped = Object.values(byUser).sort((a: any, b: any) => (b.total_score ?? 0) - (a.total_score ?? 0))
+    const grouped = Object.values(byUser).sort(
+      (a: any, b: any) => getDisplayTotalScore(b) - getDisplayTotalScore(a),
+    )
 
     // If a section is selected, filter using the joined profile.section
     const items = grouped.filter((a: any) => {
@@ -126,9 +133,7 @@ watch(selectedSection, async () => {
     <div class="space-y-4 sm:space-y-6">
       <!-- Header Section -->
       <header class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
-        <h2 class="text-xl font-semibold text-neutral-800 sm:text-2xl">
-          Grade 2
-        </h2>
+        <h2 class="text-xl font-semibold text-neutral-800 sm:text-2xl">Grade 2</h2>
         <Select v-model="selectedSection" class="w-full sm:w-auto">
           <SelectTrigger class="min-w-[140px]">
             <SelectValue />
@@ -170,15 +175,18 @@ watch(selectedSection, async () => {
                   <div
                     class="text-lg font-bold"
                     :class="{
-                      'text-blue-600': assessment.overall_score >= 75,
+                      'text-blue-600': getDisplayOverallScore(assessment) >= 75,
                       'text-orange-600':
-                        assessment.overall_score >= 50 && assessment.overall_score < 75,
-                      'text-red-600': assessment.overall_score < 50,
+                        getDisplayOverallScore(assessment) >= 50 &&
+                        getDisplayOverallScore(assessment) < 75,
+                      'text-red-600': getDisplayOverallScore(assessment) < 50,
                     }"
                   >
-                    {{ assessment.overall_score }}%
+                    {{ getDisplayOverallScore(assessment) }}%
                   </div>
-                  <div class="text-sm text-gray-600">Total: {{ assessment.total_score }}</div>
+                  <div class="text-sm text-gray-600">
+                    Total: {{ getDisplayTotalScore(assessment) }}
+                  </div>
                 </div>
               </div>
 
@@ -448,7 +456,7 @@ watch(selectedSection, async () => {
                   {{ index + 1 }}
                 </td>
                 <td class="border border-gray-300 px-2 py-3 font-mono text-xs lg:px-3">
-                  {{ assessment.learner_id ? assessment.learner_id.slice(0, 8) : '' }}
+                  {{ (assessment as any).profiles?.learner_id || 'N/A' }}
                 </td>
                 <td class="border border-gray-300 px-2 py-3 text-xs lg:px-3 lg:text-sm">
                   {{ getLearnerName(assessment) }}
@@ -562,20 +570,30 @@ watch(selectedSection, async () => {
                   {{ assessment.task_k_score }}
                 </td>
                 <td
-                  class="border border-gray-300 px-2 py-3 text-center text-xs font-bold lg:px-3 lg:text-sm"
+                  class="border border-gray-300 px-1 py-3 text-center text-xs font-medium lg:px-2 lg:text-sm"
                   :class="{
-                    'text-blue-600': assessment.overall_score >= 75,
-                    'text-orange-600':
-                      assessment.overall_score >= 50 && assessment.overall_score < 75,
-                    'text-red-600': assessment.overall_score < 50,
+                    'text-green-600': assessment.task_l_score > 0,
+                    'text-gray-400': assessment.task_l_score === 0,
                   }"
                 >
-                  {{ assessment.overall_score }}%
+                  {{ assessment.task_l_score }}
+                </td>
+                <td
+                  class="border border-gray-300 px-2 py-3 text-center text-xs font-bold lg:px-3 lg:text-sm"
+                  :class="{
+                    'text-blue-600': getDisplayOverallScore(assessment) >= 75,
+                    'text-orange-600':
+                      getDisplayOverallScore(assessment) >= 50 &&
+                      getDisplayOverallScore(assessment) < 75,
+                    'text-red-600': getDisplayOverallScore(assessment) < 50,
+                  }"
+                >
+                  {{ getDisplayOverallScore(assessment) }}%
                 </td>
                 <td
                   class="border border-gray-300 px-2 py-3 text-center text-xs font-bold text-gray-700 lg:px-3 lg:text-sm"
                 >
-                  {{ assessment.total_score }}
+                  {{ getDisplayTotalScore(assessment) }}
                 </td>
               </tr>
             </tbody>

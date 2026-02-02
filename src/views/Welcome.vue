@@ -4,6 +4,7 @@ import RMALayout from '@/layouts/RMALayout.vue'
 import Leaderboard from '@/components/Leaderboard.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useAssessment } from '@/composables/useAssessment'
+import { getDisplayOverallScore, getDisplayTotalScore } from '@/lib/scoreUtils'
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/lib/supabase-client'
@@ -38,8 +39,8 @@ const checkPerfectScore = async () => {
     // If that doesn't indicate a perfect score, check the best completed assessment.
     const assessment = await getCurrentAssessment(user.value)
     if (assessment) {
-      const overall = Number(assessment.overall_score ?? assessment.total_score ?? 0)
-      if (!isNaN(overall) && overall >= 100) {
+      const overall = getDisplayOverallScore(assessment) || getDisplayTotalScore(assessment) || 0
+      if (overall >= 100) {
         hasPerfectScore.value = true
         return
       }
@@ -48,8 +49,8 @@ const checkPerfectScore = async () => {
     // Fallback: check the best (completed) assessment for a perfect score
     const best = await getBestAssessment(user.value)
     if (best) {
-      const bestOverall = Number(best.overall_score ?? best.total_score ?? 0)
-      hasPerfectScore.value = !isNaN(bestOverall) && bestOverall >= 100
+      const bestOverall = getDisplayOverallScore(best) || getDisplayTotalScore(best) || 0
+      hasPerfectScore.value = bestOverall >= 100
       return
     }
   } catch (e) {
@@ -173,7 +174,7 @@ const requestExtra = async () => {
           <div class="mt-6 sm:mt-8">
             <Button
               v-cloak
-              class="w-full px-6 py-3 text-base sm:w-auto cursor-pointer"
+              class="w-full cursor-pointer px-6 py-3 text-base sm:w-auto"
               :disabled="!canStart && !hasOngoingAssessment"
               @click="startAssessment"
             >
