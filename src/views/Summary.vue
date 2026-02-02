@@ -349,13 +349,25 @@ const tasks = [
         id: 'K1',
         prompt: 'Name the shapes in the pattern.',
         type: 'short_answer',
-        possible_answers: ['circle', 'half-circle', 'semi-circle', 'square'],
+        answer: 'circle, half-circle, square',
+        // Partial credit: accepts any valid shapes, normalized scoring
+        allowedShapes: [
+          'circle',
+          'half-circle',
+          'half circle',
+          'semi-circle',
+          'semi circle',
+          'semicircle',
+          'halfcircle',
+          'square',
+        ],
+        expectedShapes: ['circle', 'half-circle', 'square'],
       },
       {
         id: 'K2',
         prompt: 'Draw the missing shapes in the pattern (circle, half-circle, square, circle).',
         type: 'drawing',
-        answer: ['circle', 'half-circle', 'square', 'circle'],
+        answer: 'circle, half-circle, square, circle',
       },
     ],
   },
@@ -479,14 +491,24 @@ const studentResults = computed(() => {
       }
     }
 
-    // Fallback: check stored per-task score if no answer found
+    // Fallback: check stored per-subtask score if no answer found
     if (ans === undefined && entry.score !== undefined) {
       const score = Number(entry.score ?? 0)
       const taskMax = currentTask.value?.points ?? 0
-      isCorrect = taskMax > 0 ? score >= taskMax : false
+      const numQuestions = currentTask.value?.questions?.length || 1
+      const perSubtaskMax = taskMax / numQuestions
+
+      // For subtasks with partial scoring (like Task K), consider correct if score >= 90% of max
+      // Use 0.001 tolerance for floating point comparison
+      const tolerance = 0.001
+      isCorrect = perSubtaskMax > 0 ? score >= perSubtaskMax * 0.9 - tolerance : false
+
       console.log(`[Summary] Using fallback scoring for ${learnerIdShort}:`, {
         score,
         taskMax,
+        numQuestions,
+        perSubtaskMax,
+        threshold: perSubtaskMax * 0.9,
         isCorrect,
       })
     }

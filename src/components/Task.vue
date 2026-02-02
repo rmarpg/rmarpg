@@ -780,11 +780,27 @@ const handleAnswer = (answer: string) => {
 // Task K validation strategies
 const taskKStrategies = {
   K1: {
-    allowedShapes: ['circle', 'half-circle', 'semi-circle', 'square'],
+    allowedShapes: [
+      'circle',
+      'half-circle',
+      'half circle',
+      'semi-circle',
+      'semi circle',
+      'semicircle',
+      'halfcircle',
+      'square',
+    ],
     expectedShapes: ['circle', 'half-circle', 'square'],
     validateAnswer: (userAnswer: string) => {
       const normalizeShape = (shape: string) => {
-        if (shape === 'semi-circle') return 'half-circle'
+        if (
+          shape === 'semi-circle' ||
+          shape === 'half circle' ||
+          shape === 'semi circle' ||
+          shape === 'semicircle' ||
+          shape === 'halfcircle'
+        )
+          return 'half-circle'
         return shape
       }
 
@@ -824,11 +840,27 @@ const taskKStrategies = {
     },
   },
   K2: {
-    allowedShapes: ['circle', 'half-circle', 'semi-circle', 'square'],
+    allowedShapes: [
+      'circle',
+      'half-circle',
+      'half circle',
+      'semi-circle',
+      'semi circle',
+      'semicircle',
+      'halfcircle',
+      'square',
+    ],
     expectedPattern: ['circle', 'half-circle', 'square', 'circle'],
     validateAnswer: (userAnswer: string) => {
       const normalizeShape = (shape: string) => {
-        if (shape === 'semi-circle') return 'half-circle'
+        if (
+          shape === 'semi-circle' ||
+          shape === 'half circle' ||
+          shape === 'semi circle' ||
+          shape === 'semicircle' ||
+          shape === 'halfcircle'
+        )
+          return 'half-circle'
         return shape
       }
 
