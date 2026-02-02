@@ -443,56 +443,12 @@ const studentResults = computed(() => {
     let isCorrect = false
     let ans = undefined
 
-    // Check for both "answers" (plural - task-level) and "answer" (singular - subtask-level)
-    if (progress && typeof progress === 'object') {
-      // Try subtask-level "answer" field first (for individual question responses)
-      if (progress.answer !== undefined && progress.answer !== null) {
-        ans = progress.answer
-        console.log(`[Summary] Found answer (singular) for ${learnerIdShort}:`, ans)
-      }
-      // Fall back to task-level "answers" object
-      else if (progress.answers && typeof progress.answers === 'object') {
-        ans = progress.answers[question.id]
-        console.log(`[Summary] Found answer in answers[${question.id}] for ${learnerIdShort}:`, ans)
-      }
+    // For Task K (and other tasks with partial scoring), prefer using stored score
+    // because answer validation requires complex normalization logic
+    const useScoreBased = taskKey === 'K' && entry.score !== undefined
 
-      if (ans !== undefined && ans !== null) {
-        const normalize = (s: any) => String(s).toLowerCase().trim()
-        const normalizedAns = normalize(ans)
-
-        // Check if question has a single answer or multiple possible answers
-        if (question.answer !== undefined) {
-          // Single answer comparison
-          const normalizedExpected = normalize(question.answer)
-          isCorrect = normalizedAns === normalizedExpected
-          console.log(`[Summary] Answer comparison for ${learnerIdShort}:`, {
-            raw_answer: ans,
-            normalized_answer: normalizedAns,
-            expected: question.answer,
-            normalized_expected: normalizedExpected,
-            isCorrect,
-          })
-        } else if (question.possible_answers && Array.isArray(question.possible_answers)) {
-          // Multiple possible answers - check if answer is in the list
-          const normalizedPossible = question.possible_answers.map((a: any) => normalize(a))
-          isCorrect = normalizedPossible.includes(normalizedAns)
-          console.log(`[Summary] Answer comparison (possible_answers) for ${learnerIdShort}:`, {
-            raw_answer: ans,
-            normalized_answer: normalizedAns,
-            possible_answers: question.possible_answers,
-            normalized_possible: normalizedPossible,
-            isCorrect,
-          })
-        } else {
-          console.log(`[Summary] No expected answer defined for question ${question.id}`)
-        }
-      } else {
-        console.log(`[Summary] No answer found for ${learnerIdShort}, using fallback scoring`)
-      }
-    }
-
-    // Fallback: check stored per-subtask score if no answer found
-    if (ans === undefined && entry.score !== undefined) {
+    if (useScoreBased) {
+      // Use score-based validation for Task K
       const score = Number(entry.score ?? 0)
       const taskMax = currentTask.value?.points ?? 0
       const numQuestions = currentTask.value?.questions?.length || 1
@@ -503,7 +459,7 @@ const studentResults = computed(() => {
       const tolerance = 0.001
       isCorrect = perSubtaskMax > 0 ? score >= perSubtaskMax * 0.9 - tolerance : false
 
-      console.log(`[Summary] Using fallback scoring for ${learnerIdShort}:`, {
+      console.log(`[Summary] Using score-based validation for ${learnerIdShort} (Task K):`, {
         score,
         taskMax,
         numQuestions,
@@ -511,6 +467,79 @@ const studentResults = computed(() => {
         threshold: perSubtaskMax * 0.9,
         isCorrect,
       })
+    } else {
+      // Check for both "answers" (plural - task-level) and "answer" (singular - subtask-level)
+      if (progress && typeof progress === 'object') {
+        // Try subtask-level "answer" field first (for individual question responses)
+        if (progress.answer !== undefined && progress.answer !== null) {
+          ans = progress.answer
+          console.log(`[Summary] Found answer (singular) for ${learnerIdShort}:`, ans)
+        }
+        // Fall back to task-level "answers" object
+        else if (progress.answers && typeof progress.answers === 'object') {
+          ans = progress.answers[question.id]
+          console.log(
+            `[Summary] Found answer in answers[${question.id}] for ${learnerIdShort}:`,
+            ans,
+          )
+        }
+
+        if (ans !== undefined && ans !== null) {
+          const normalize = (s: any) => String(s).toLowerCase().trim()
+          const normalizedAns = normalize(ans)
+
+          // Check if question has a single answer or multiple possible answers
+          if (question.answer !== undefined) {
+            // Single answer comparison
+            const normalizedExpected = normalize(question.answer)
+            isCorrect = normalizedAns === normalizedExpected
+            console.log(`[Summary] Answer comparison for ${learnerIdShort}:`, {
+              raw_answer: ans,
+              normalized_answer: normalizedAns,
+              expected: question.answer,
+              normalized_expected: normalizedExpected,
+              isCorrect,
+            })
+          } else if (question.possible_answers && Array.isArray(question.possible_answers)) {
+            // Multiple possible answers - check if answer is in the list
+            const normalizedPossible = question.possible_answers.map((a: any) => normalize(a))
+            isCorrect = normalizedPossible.includes(normalizedAns)
+            console.log(`[Summary] Answer comparison (possible_answers) for ${learnerIdShort}:`, {
+              raw_answer: ans,
+              normalized_answer: normalizedAns,
+              possible_answers: question.possible_answers,
+              normalized_possible: normalizedPossible,
+              isCorrect,
+            })
+          } else {
+            console.log(`[Summary] No expected answer defined for question ${question.id}`)
+          }
+        } else {
+          console.log(`[Summary] No answer found for ${learnerIdShort}, using fallback scoring`)
+        }
+      }
+
+      // Fallback: check stored per-subtask score if no answer found
+      if (ans === undefined && entry.score !== undefined) {
+        const score = Number(entry.score ?? 0)
+        const taskMax = currentTask.value?.points ?? 0
+        const numQuestions = currentTask.value?.questions?.length || 1
+        const perSubtaskMax = taskMax / numQuestions
+
+        // For subtasks with partial scoring, consider correct if score >= 90% of max
+        // Use 0.001 tolerance for floating point comparison
+        const tolerance = 0.001
+        isCorrect = perSubtaskMax > 0 ? score >= perSubtaskMax * 0.9 - tolerance : false
+
+        console.log(`[Summary] Using fallback scoring for ${learnerIdShort}:`, {
+          score,
+          taskMax,
+          numQuestions,
+          perSubtaskMax,
+          threshold: perSubtaskMax * 0.9,
+          isCorrect,
+        })
+      }
     }
 
     results.push({ assessment: a, correct: isCorrect })
