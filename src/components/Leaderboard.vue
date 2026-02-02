@@ -115,13 +115,27 @@ const fetchLeaderboard = async () => {
     // Try to fetch assessments with profile information
     // Fetch a reasonably large page of completed assessments, then group
     // client-side to ensure we keep one (best) assessment per learner.
+    // Fetch all task scores to calculate total dynamically
     const { data, error: fetchError } = await supabase
       .from('assessments')
       .select(
         `
         id,
         learner_id,
+        task_a_score,
+        task_b_score,
+        task_c_score,
+        task_d_score,
+        task_e_score,
+        task_f_score,
+        task_g_score,
+        task_h_score,
+        task_i_score,
+        task_j_score,
+        task_k_score,
+        task_l_score,
         total_score,
+        overall_score,
         grade_level,
         created_at,
         profiles!learner_id (
