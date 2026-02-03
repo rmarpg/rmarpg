@@ -124,14 +124,10 @@ const fetchGenderData = async () => {
       const { data: userData, error: userError } = await supabase.auth.getSession()
 
       if (userError || !userData.session) {
-        console.warn('Cannot fetch user session data, using sample data')
-        // Use sample data that matches the pie chart in the image
-        genderData.value = { male: 143, female: 57 }
+        console.warn('Cannot fetch user session data')
         return
       }
 
-      // For demo, use sample data based on the provided chart
-      genderData.value = { male: 143, female: 57 }
       return
     }
 
@@ -142,16 +138,9 @@ const fetchGenderData = async () => {
       else if (profile.gender === 'female') counts.female++
     })
 
-    // If no data found, use sample data
-    if (counts.male === 0 && counts.female === 0) {
-      genderData.value = { male: 143, female: 57 }
-    } else {
-      genderData.value = counts
-    }
+    genderData.value = counts
   } catch (error) {
     console.error('Unexpected error:', error)
-    // Use sample data for demo that matches the provided chart
-    genderData.value = { male: 143, female: 57 }
   } finally {
     loading.value = false
   }
