@@ -8,25 +8,34 @@ import { useAssessment, type Assessment } from '@/composables/useAssessment'
 import { useAuth } from '@/composables/useAuth'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { supabase } from '@/lib/supabase-client'
-import { getDisplayTotalScore, getDisplayOverallScore } from '@/lib/scoreUtils'
 import { onMounted, ref, watch } from 'vue'
 
 const selectedSection = ref('Rose')
 const GRADE_LEVEL = 2
+const TASKS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] as const
+const MAX_TOTAL = 44
 const { user, loading: authLoading } = useAuth()
 const { loading: assessmentLoading } = useAssessment()
 const assessments = ref<Assessment[]>([])
 
-// Fetch all assessments for grade level 2
+// Fetch all assessments for grade level 2, computing per-task scores
+// dynamically from the assessment_task_scores table.
 const fetchAssessments = async () => {
   if (assessmentLoading.value) return
 
   try {
+    // Query 1: Base assessment data (without task score columns)
     const { data, error } = await supabase
       .from('assessments')
       .select(
         `
-        *,
+        id,
+        learner_id,
+        grade_level,
+        assessment_date,
+        completed_at,
+        created_at,
+        updated_at,
         profiles!learner_id (
           first_name,
           last_name,
@@ -43,23 +52,72 @@ const fetchAssessments = async () => {
       return
     }
 
+    const ids = (data || []).map((a: any) => a.id).filter(Boolean)
+
+    // Query 2: All task scores from assessment_task_scores
+    let taskScores: any[] = []
+    if (ids.length > 0) {
+      const { data: tsData, error: tsError } = await supabase
+        .from('assessment_task_scores')
+        .select('assessment_id, task, subtask, score')
+        .in('assessment_id', ids)
+
+      if (tsError) {
+        console.error('Error fetching task scores:', tsError)
+      } else {
+        taskScores = tsData || []
+      }
+    }
+
+    // Build per-assessment, per-task score sums (skip progress rows where subtask is empty)
+    const scoreMap: Record<string, Record<string, number>> = {}
+    for (const row of taskScores) {
+      if (!row.subtask) continue
+      const aId = row.assessment_id
+      if (!scoreMap[aId]) scoreMap[aId] = {}
+      const task = row.task?.toUpperCase()
+      if (task) {
+        scoreMap[aId][task] = (scoreMap[aId][task] || 0) + (Number(row.score) || 0)
+      }
+    }
+
+    // Enrich assessments with recomputed task scores, total, and overall
+    const enriched = (data || []).map((a: any) => {
+      const scores = scoreMap[a.id] || {}
+      const totalScore = TASKS.reduce((sum, t) => sum + (scores[t] || 0), 0)
+      return {
+        ...a,
+        task_a_score: scores['A'] || 0,
+        task_b_score: scores['B'] || 0,
+        task_c_score: scores['C'] || 0,
+        task_d_score: scores['D'] || 0,
+        task_e_score: scores['E'] || 0,
+        task_f_score: scores['F'] || 0,
+        task_g_score: scores['G'] || 0,
+        task_h_score: scores['H'] || 0,
+        task_i_score: scores['I'] || 0,
+        task_j_score: scores['J'] || 0,
+        task_k_score: scores['K'] || 0,
+        task_l_score: scores['L'] || 0,
+        total_score: totalScore,
+        overall_score: Math.min(Math.round((totalScore / MAX_TOTAL) * 100 * 100) / 100, 100),
+      }
+    })
+
     // Group by learner_id and keep the highest total_score per user,
     // then apply section filter.
-    // Calculate scores dynamically from task scores
     const byUser: Record<string, any> = {}
-    for (const a of data || []) {
+    for (const a of enriched) {
       const key = a.learner_id
       if (!key) continue
       const existing = byUser[key]
-      const currentScore = getDisplayTotalScore(a)
-      const existingScore = existing ? getDisplayTotalScore(existing) : 0
-      if (!existing || currentScore > existingScore) {
+      if (!existing || (a.total_score ?? 0) > (existing.total_score ?? 0)) {
         byUser[key] = a
       }
     }
 
     const grouped = Object.values(byUser).sort(
-      (a: any, b: any) => getDisplayTotalScore(b) - getDisplayTotalScore(a),
+      (a: any, b: any) => (b.total_score ?? 0) - (a.total_score ?? 0),
     )
 
     // If a section is selected, filter using the joined profile.section
@@ -100,6 +158,11 @@ const getLearnerName = (assessment: Assessment) => {
     return profile.first_name
   }
   return `User ${assessment.learner_id.slice(0, 8)}...`
+}
+
+// Format a score to 1 decimal place (for tasks with fractional scores like K, L)
+const formatScore = (score: number) => {
+  return Number(score || 0).toFixed(1)
 }
 
 // Get section from joined profile or fallback
@@ -175,18 +238,15 @@ watch(selectedSection, async () => {
                   <div
                     class="text-lg font-bold"
                     :class="{
-                      'text-blue-600': getDisplayOverallScore(assessment) >= 75,
+                      'text-blue-600': assessment.overall_score >= 75,
                       'text-orange-600':
-                        getDisplayOverallScore(assessment) >= 50 &&
-                        getDisplayOverallScore(assessment) < 75,
-                      'text-red-600': getDisplayOverallScore(assessment) < 50,
+                        assessment.overall_score >= 50 && assessment.overall_score < 75,
+                      'text-red-600': assessment.overall_score < 50,
                     }"
                   >
-                    {{ getDisplayOverallScore(assessment) }}%
+                    {{ assessment.overall_score }}%
                   </div>
-                  <div class="text-sm text-gray-600">
-                    Total: {{ getDisplayTotalScore(assessment) }}
-                  </div>
+                  <div class="text-sm text-gray-600">Total: {{ assessment.total_score }}</div>
                 </div>
               </div>
 
@@ -321,7 +381,7 @@ watch(selectedSection, async () => {
                       'text-gray-400': assessment.task_k_score === 0,
                     }"
                   >
-                    {{ assessment.task_k_score }}
+                    {{ formatScore(assessment.task_k_score) }}
                   </div>
                 </div>
                 <div class="text-center">
@@ -333,7 +393,7 @@ watch(selectedSection, async () => {
                       'text-gray-400': assessment.task_l_score === 0,
                     }"
                   >
-                    {{ assessment.task_l_score }}
+                    {{ formatScore(assessment.task_l_score) }}
                   </div>
                 </div>
               </div>
@@ -567,7 +627,7 @@ watch(selectedSection, async () => {
                     'text-gray-400': assessment.task_k_score === 0,
                   }"
                 >
-                  {{ assessment.task_k_score }}
+                  {{ formatScore(assessment.task_k_score) }}
                 </td>
                 <td
                   class="border border-gray-300 px-1 py-3 text-center text-xs font-medium lg:px-2 lg:text-sm"
@@ -576,24 +636,23 @@ watch(selectedSection, async () => {
                     'text-gray-400': assessment.task_l_score === 0,
                   }"
                 >
-                  {{ assessment.task_l_score }}
+                  {{ formatScore(assessment.task_l_score) }}
                 </td>
                 <td
                   class="border border-gray-300 px-2 py-3 text-center text-xs font-bold lg:px-3 lg:text-sm"
                   :class="{
-                    'text-blue-600': getDisplayOverallScore(assessment) >= 75,
+                    'text-blue-600': assessment.overall_score >= 75,
                     'text-orange-600':
-                      getDisplayOverallScore(assessment) >= 50 &&
-                      getDisplayOverallScore(assessment) < 75,
-                    'text-red-600': getDisplayOverallScore(assessment) < 50,
+                      assessment.overall_score >= 50 && assessment.overall_score < 75,
+                    'text-red-600': assessment.overall_score < 50,
                   }"
                 >
-                  {{ getDisplayOverallScore(assessment) }}%
+                  {{ assessment.overall_score }}%
                 </td>
                 <td
                   class="border border-gray-300 px-2 py-3 text-center text-xs font-bold text-gray-700 lg:px-3 lg:text-sm"
                 >
-                  {{ getDisplayTotalScore(assessment) }}
+                  {{ assessment.total_score }}
                 </td>
               </tr>
             </tbody>
